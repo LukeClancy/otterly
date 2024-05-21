@@ -16,7 +16,7 @@
   ],
   "dependencies": {
     "morphdom": "^2.7.2",
-  }
+  },
   "author": "Luke Clancy",
   "license": "ISC",
   "directories": {
