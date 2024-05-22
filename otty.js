@@ -45,7 +45,7 @@ class Otty {
 	sendsXHR({url, formInfo, method = "POST", xhrChangeF,
 		csrfContent, csrfHeader = this.csrfHeader,
 		csrfSelector = this.csrfSelector,
-		confirm, withCredentials = false}){
+		confirm, withCredentials = false, responseType="json"}){
 
 		return new Promise(function(resolve, reject) {
 			var xhr, form_data;
@@ -53,12 +53,13 @@ class Otty {
 			xhr = new XMLHttpRequest();
 			xhr.withCredentials = withCredentials
 			xhr.open(method, url)
-			xhr.onload = function(){
+			xhr.onload = function(tst){
 				if(xhr.status >= 200 && xhr.status <= 302 && xhr.status != 300) {
-					if(xhr.responseText) {
-						let i = JSON.parse(xhr.responseText)
-						i['status'] == xhr.status
-						resolve(i)
+					if(xhr.response) {
+						if(xhr.responseType == 'json'){
+							xhr.response.status = xhr.status
+						}
+						resolve(xhr.response)
 					} else {
 						resolve()
 					}
@@ -72,6 +73,7 @@ class Otty {
 					statusText: xhr.statusText
 				});
 			}
+			xhr.responseType=responseType
 
 			//get formInfo into the form_data
 			form_data = this.obj_to_fd(formInfo)
@@ -81,11 +83,11 @@ class Otty {
 				csrfContent = document.querySelector(csrfSelector).content
 			}
 			xhr.setRequestHeader(csrfHeader, csrfContent)
-
+			
 			//helper so we know where this came from. Super useful when for example, checking
 			//if someones signed in, and figuring out how to notify them that they are not
 			//redirect back with a flash? Or just morph a message up?
-			form_data.append('otty', 'true')
+			xhr.setRequestHeader('otty', 'true')
 
 			//add a file or something if you want go nuts
 			if(xhrChangeF) {
@@ -110,8 +112,8 @@ class Otty {
 		//	- if you share domains with untrusted partys.
 
 		let d = window.location.hostname
-		let urld = (new URL(url, 'https://' + d)).host //url_with_default_host
-		
+		let urld = (new URL(url, window.location.origin)).hostname //url_with_default_host
+
 		if( d.split('.').slice(subdomain_accuracy).join('.') == urld.split('.').slice(subdomain_accuracy).join('.')) {
 			return true
 		}
@@ -222,48 +224,61 @@ class Otty {
 		morphdom(document.head, tempdocHead)
 	}
 
+	async goto(href){
+		return new Promise((async function(resolve, reject){
+			let url = new URL(url, window.location.origin + href).to_s
+	
+			let page = this.sendsXHR({
+				url: href,
+				method: "GET",
+				responseType: "text",											//<- dont try to json parse results
+				xhrChangeF: (xhr) => {xhr.setRequestHeader('ottynav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
+			})
+	
+			page = await page
+	
+			//switch the document's this.navigationReplace's css selector elements. if either not found,
+			//default to switching bodies entirely
+			let parser = new DOMParser();
+			let tempdoc = parser.parseFromString(page,  "text/html")
+			let tmpOrienter, orienter
+			if(this.navigationReplaces){
+				tmpOrienter = tempdoc.querySelector(this.navigationReplaces)
+				orienter = document.querySelector(this.navigationReplaces)
+			}
+			if((!orienter) || (!tmpOrienter)){
+				tmpOrienter = tempdoc.body
+				orienter = document.body
+			}
+	
+			orienter.replaceWith(tmpOrienter)
+	
+			//morph the head to the new head. Throw into a different function for
+			//any strangeness that one may encounter and 
+			this.navigationHeadMorph(tempdoc.head)
+	
+			//push the current page on
+			history.pushState({}, "", url);
+			resolve(url)
+		}).bind(this))
+	}
+
 	async navigationF(e) {
 		//prevent default if we do not handle
-		let href = e.ct.getAttribute('href')
-		if(!href){ return }
-		if(!this.isLocalUrl(href)){ return }
-
 		//cancel their thing
 		e.preventDefault()
 		e.stopPropagation()
+		
+		let href = e.target.closest('[href]')
+		if(!href){ return }
+		href = href.getAttribute('href')
+		if(!this.isLocalUrl(href)){ return }
 
-		//hit our endpoint
-		let d = window.location.hostname
-		let url = (new URL(href, 'https://' + d)).toString()
-		let out1 = this.sendsXHR({url: url, method: "GET"})
-
-		out1 = await out1
-
-		//switch the document's this.navigationReplace's css selector elements. if either not found,
-		//default to switching bodies entirely
-		let parser = new DOMParser();
-		let tempdoc = parser.parseFromString(out1.body,  "text/html")
-		let tmpOrienter, orienter
-		if(this.navigationReplaces){
-			tmpOrienter = tempdoc.querySelector(this.navigationReplaces)
-			orienter = document.querySelector(this.navigationReplaces)
-		}
-		if((!orienter) || (!tmpOrienter)){
-			tmpOrienter = tempdoc.body
-			orienter = document.body
-		}
-		orienter.replaceWith(tmpOrienter)
-
-		//morph the head to the new head. Throw into a different function for
-		//any strangeness that one may encounter and 
-		this.navigationHeadMorph(tempdoc.head)
-
-		//push the current page on
-		history.pushState({}, "", url);
+		await this.goto(href)
 	}
 	addNavigationListener(){
 		window.history.scrollRestoration = 'auto'
-		document.addEventListener('click', this.saveStateListener)
+		document.addEventListener('click', this.navigationF.bind(this))
 	}
 	//polling is untested
 	poll = (dat) => {
