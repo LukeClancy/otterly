@@ -194,29 +194,6 @@ class Otty {
 			})
 		}.bind(this))
 	}
-
-// 	let context = this
-// 	this.before_visit_method = (e) => {
-// 		e.preventDefault()
-// 		let url = new URL(e.currentTarget.getAttribute('href'),(new URL(window.location.href)).origin)
-// 		context.richard_sherman(url.toString())
-// 	}
-
-// 	let arr = Array.from(this.element.querySelector('#intercept_at').querySelectorAll('a[href]'))
-// 	let this_url = new URL(window.location.href)
-// 	let next_url
-// 	for(let linky of arr){
-// 		//check to make sure the path of that link is the same as the path of this link besides
-// 		//the ? values and then add the event listener
-// 			//TODO
-// 		next_url = new URL(linky.getAttribute('href'), this_url.origin)
-// 		if(this_url.pathname == next_url.pathname && this_url.origin == next_url.origin) {
-// 			linky.addEventListener('click', this.before_visit_method)
-// 		}
-// 	}
-// }
-
-	
 	//this will default to replacing body if this css selector naught found.
 	navigationReplaces = undefined
 
@@ -224,10 +201,44 @@ class Otty {
 		morphdom(document.head, tempdocHead)
 	}
 
+	pageReplace(page, scroll){
+		//switch the document's this.navigationReplace's css selector elements. if either not found,
+		//default to switching bodies entirely
+		let parser = new DOMParser();
+		let tempdoc = parser.parseFromString(page,  "text/html")
+		let tmpOrienter, orienter
+		if(this.navigationReplaces){
+			tmpOrienter = tempdoc.querySelector(this.navigationReplaces)
+			orienter = document.querySelector(this.navigationReplaces)
+		}
+		if((!orienter) || (!tmpOrienter)){
+			tmpOrienter = tempdoc.body
+			orienter = document.body
+		}
+	
+		orienter.replaceWith(tmpOrienter)
+	
+		//morph the head to the new head. Throw into a different function for
+		//any strangeness that one may encounter and 
+		this.navigationHeadMorph(tempdoc.head)
+	
+		console.log('scrolling to ', scroll)
+		window.scroll(0, scroll)
+	}
+
+	updatePageState(){
+		window.history.replaceState({
+			// title: document.title,
+			scroll: window.scrollY,
+			page: document.documentElement.outerHTML,
+		}, '', window.location.href)
+	}
+
 	async goto(href){
 		return new Promise((async function(resolve, reject){
-			let url = new URL(url, window.location.origin + href).to_s
+			href = (new URL(href, window.location.origin)).href
 	
+			//start getting the new info
 			let page = this.sendsXHR({
 				url: href,
 				method: "GET",
@@ -235,50 +246,46 @@ class Otty {
 				xhrChangeF: (xhr) => {xhr.setRequestHeader('ottynav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
 			})
 	
+			//update current page state while we wait...
+			this.updatePageState()
+	
 			page = await page
 	
-			//switch the document's this.navigationReplace's css selector elements. if either not found,
-			//default to switching bodies entirely
-			let parser = new DOMParser();
-			let tempdoc = parser.parseFromString(page,  "text/html")
-			let tmpOrienter, orienter
-			if(this.navigationReplaces){
-				tmpOrienter = tempdoc.querySelector(this.navigationReplaces)
-				orienter = document.querySelector(this.navigationReplaces)
-			}
-			if((!orienter) || (!tmpOrienter)){
-				tmpOrienter = tempdoc.body
-				orienter = document.body
-			}
+			this.pageReplace(page, 0)
 	
-			orienter.replaceWith(tmpOrienter)
+			//push the new page state
+			window.history.pushState({
+				scroll: 0,
+				page: page
+			}, "", href);
 	
-			//morph the head to the new head. Throw into a different function for
-			//any strangeness that one may encounter and 
-			this.navigationHeadMorph(tempdoc.head)
-	
-			//push the current page on
-			history.pushState({}, "", url);
-			resolve(url)
+			resolve(href)
 		}).bind(this))
 	}
 
 	async navigationF(e) {
+		let href = e.target.closest('[href]')
+		if(!href){ return }
+		href = href.getAttribute('href')
+		if(!this.isLocalUrl(href)){
+			this.updatePageState()
+			return
+		}
 		//prevent default if we do not handle
 		//cancel their thing
 		e.preventDefault()
 		e.stopPropagation()
-		
-		let href = e.target.closest('[href]')
-		if(!href){ return }
-		href = href.getAttribute('href')
-		if(!this.isLocalUrl(href)){ return }
 
 		await this.goto(href)
 	}
 	addNavigationListener(){
-		window.history.scrollRestoration = 'auto'
+		window.history.scrollRestoration = 'manual'
 		document.addEventListener('click', this.navigationF.bind(this))
+		window.addEventListener('popstate', (e) => {
+			if(e.state){
+				this.pageReplace(e.state.page, e.state.scroll)
+			}
+		})
 	}
 	//polling is untested
 	poll = (dat) => {
