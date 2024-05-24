@@ -19,4 +19,4 @@ let Debug = {
 		console.log(this, ...args)
 	}
 }
-export default Debug
+export {Debug}
