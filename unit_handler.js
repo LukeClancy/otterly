@@ -49,7 +49,7 @@ class UnitHandler {
 			ob._unit = {...Generic}
 		}
 		let cs = [ob._unit]
-		console.log('nms', nms)
+		// console.log('nms', nms)
 		for(let nm of nms){
 			let c = this.units[nm]
 			if(c == undefined) {
@@ -209,7 +209,7 @@ class UnitHandler {
 	createObserver(){
 		this.observer = new MutationObserver((ma) => {
 			let n, ns, chls, mut, attrs, unit_attrs, x_attrs
-			console.log('mutation', ma)
+			// console.log('mutation', ma)
 			ns = []
 			ma = Array.from(ma)
 			// ma = ma.filter((m) => {return m.type == "childList" || m.type == "attributes"})
@@ -217,11 +217,12 @@ class UnitHandler {
 			for(mut of chls) {
 				//remove units
 				for(n of mut.removedNodes) {
-					if(n.dataset.unit) { n.unitRemoved() }
+					//text nodes dont have datasets 😅
+					if(n.dataset && n.dataset.unit) { n.unitRemoved() }
 				}
 				//add units, push to list for later calling connected after everything is linked up
 				for(n of mut.addedNodes) {
-					if(n.dataset.unit){ ns.push(this.addUnit(n)) }
+					if(n.dataset && n.dataset.unit){ ns.push(this.addUnit(n)) }
 				}
 			}
 			attrs = ma.filter((m) => {
@@ -293,11 +294,8 @@ class UnitHandler {
 
 	constructor(unit_list){
 		this.units = unit_list
-
 		this.shortcuts()
-
 		this.handleFirstUnits()
-
 		//mutation that keeps track of all this stuff
 		this.createObserver()
 

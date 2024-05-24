@@ -1,4 +1,5 @@
 import morphdom from 'morphdom'
+
 class Otty {
 	constructor(isDev, afterDive, csrfSelector, csrfHeader) {
 		this.isDev = isDev
@@ -42,10 +43,29 @@ class Otty {
 			return formData
 		}
 	}
+	_sendsXHROnLoad(resolve, reject, xhr, responseType){
+		if(xhr.status >= 200 && xhr.status <= 302 && xhr.status != 300) {
+			let rsp = xhr.response
+			if(responseType == 'json'){
+				try { rsp = JSON.parse(rsp) } catch {}
+			}
+			resolve({response: rsp, xhr: xhr})
+			// get xhr.json for the json.
+		} else {
+			reject({status: xhr.status, statusText: xhr.statusText});
+		}
+	}
+	_sendsXHROnError(resolve, reject, xhr){
+		reject({
+			status: xhr.status,
+			statusText: xhr.statusText
+		});		
+	}
 	sendsXHR({url, formInfo, method = "POST", xhrChangeF,
 		csrfContent, csrfHeader = this.csrfHeader,
 		csrfSelector = this.csrfSelector,
-		confirm, withCredentials = false, responseType="json"}){
+		confirm, withCredentials = false, responseType="json",
+		onload = this._sendsXHROnLoad, onerror = this._sendsXHROnError}){
 
 		return new Promise(function(resolve, reject) {
 			var xhr, form_data;
@@ -53,27 +73,9 @@ class Otty {
 			xhr = new XMLHttpRequest();
 			xhr.withCredentials = withCredentials
 			xhr.open(method, url)
-			xhr.onload = function(tst){
-				if(xhr.status >= 200 && xhr.status <= 302 && xhr.status != 300) {
-					if(xhr.response) {
-						if(xhr.responseType == 'json'){
-							xhr.response.status = xhr.status
-						}
-						resolve(xhr.response)
-					} else {
-						resolve()
-					}
-				} else {
-					reject({status: xhr.status, statusText: xhr.statusText});
-				}
-			}
-			xhr.onerror = function() {////
-				reject({
-					status: xhr.status,
-					statusText: xhr.statusText
-				});
-			}
 			xhr.responseType=responseType
+			xhr.onload = onload.bind(this, resolve, reject, xhr, responseType)
+			xhr.onerror = onerror.bind(this, resolve, reject, xhr)
 
 			//get formInfo into the form_data
 			form_data = this.obj_to_fd(formInfo)
@@ -188,7 +190,7 @@ class Otty {
 	
 		return new Promise(function(resolve, reject) {
 			this.sendsXHR(opts).then((obj) => {
-				handle_response(obj, resolve, reject)
+				handle_response(obj.response, resolve, reject)
 			}).catch((e) => {
 				reject(e)
 			})
@@ -201,74 +203,117 @@ class Otty {
 		morphdom(document.head, tempdocHead)
 	}
 
-	pageReplace(page, scroll){
+	pageReplace(tempdoc, scroll){
+		//standardize tempdoc (accept strings)
+		if(typeof tempdoc == "string") {
+			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
+		}
+
 		//switch the document's this.navigationReplace's css selector elements. if either not found,
 		//default to switching bodies entirely
-		let parser = new DOMParser();
-		let tempdoc = parser.parseFromString(page,  "text/html")
 		let tmpOrienter, orienter
 		if(this.navigationReplaces){
 			tmpOrienter = tempdoc.querySelector(this.navigationReplaces)
 			orienter = document.querySelector(this.navigationReplaces)
 		}
 		if((!orienter) || (!tmpOrienter)){
-			tmpOrienter = tempdoc.body
+			tmpOrienter = tempdoc.querySelector('body') //.body does not work here
 			orienter = document.body
 		}
-	
+
 		orienter.replaceWith(tmpOrienter)
-	
+
 		//morph the head to the new head. Throw into a different function for
 		//any strangeness that one may encounter and 
-		this.navigationHeadMorph(tempdoc.head)
-	
-		console.log('scrolling to ', scroll)
+		this.navigationHeadMorph(tempdoc.querySelector('head'))
+
 		window.scroll(0, scroll)
 	}
 
-	updatePageState(){
-		window.history.replaceState({
-			// title: document.title,
-			scroll: window.scrollY,
-			page: document.documentElement.outerHTML,
-		}, '', window.location.href)
+	updatePageState(url, push = false){
+		//need to create a new history state if pushing or replace if not. Promisify since
+		//before following link we have to wait for the clone, but on a regular load we dont.
+		new Promise((resolve, reject) => {
+			if(push){ this.historyReferenceLocation += 1 }
+			this.historyReferences[this.historyReferenceLocation] = {
+				page: document.documentElement.cloneNode(true),
+				origin: url.origin, pathname: url.pathname, search: url.search
+			}
+			if(push){
+				//remove futures since we just started new branch
+				this.historyReferences = this.historyReferences.slice(0, this.historyReferenceLocation + 1)
+				window.history.pushState({
+					scroll: 0, //<- page was just loaded so
+					historyReferenceLocation: this.historyReferenceLocation
+				}, "", url);
+			} else {
+				window.history.replaceState({
+					scroll: window.scrollY,
+					historyReferenceLocation: this.historyReferenceLocation
+				}, '', url)
+			}
+			resolve(true)
+		})
 	}
 
-	async goto(href){
-		return new Promise((async function(resolve, reject){
-			href = (new URL(href, window.location.origin)).href
-	
+	async goto(href, opts = {}){
+		opts = {reload: false, ...opts}
+		let f = async function(resolve, reject){
+			let loc = window.location
+			href = (new URL(href, loc.origin)).href
+
 			//start getting the new info
-			let page = this.sendsXHR({
+			let prom = this.sendsXHR({
 				url: href,
 				method: "GET",
 				responseType: "text",											//<- dont try to json parse results
 				xhrChangeF: (xhr) => {xhr.setRequestHeader('ottynav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
 			})
-	
-			//update current page state while we wait...
-			this.updatePageState()
-	
-			page = await page
-	
+
+			//update current page state while we wait. This will take into account our ajax changes & such
+			if(!(opts.reload)){
+				await this.updatePageState(loc)
+			}
+
+			//get and replace page
+			prom = await prom
+			let page = prom.response, xhr = prom.xhr
+
+			//in case of redirect...
+			if(xhr.responseURL){
+				href = xhr.responseURL
+			}
+
 			this.pageReplace(page, 0)
-	
-			//push the new page state
-			window.history.pushState({
-				scroll: 0,
-				page: page
-			}, "", href);
-	
+
+			//push the new page state. 
+			if(!(opts.reload)){
+				this.updatePageState(href, true)
+			} else {
+				this.updatePageState(loc)
+			}
+
 			resolve(href)
-		}).bind(this))
+		}
+		return new Promise(f.bind(this))
 	}
 
-	async navigationF(e) {
+	historyReferenceLocation = 0
+	historyReferences = []
+	compareHistoryReference(url, ref){
+		let same_loc = ( url.origin == ref.origin && url.pathname == ref.pathname)
+		if(!same_loc){return false}
+		let l = window.location
+		let win_loc = (url.origin = l.origin && url.pathname == l.pathname)
+		// so for example /posts?type=content matches /posts unless we are currently on /posts
+		if((!win_loc) || url.search == ref.search){return true}
+		return false
+	}
+	async linkClickedF(e) {
 		let href = e.target.closest('[href]')
 		if(!href){ return }
 		href = href.getAttribute('href')
 		if(!this.isLocalUrl(href)){
-			this.updatePageState()
 			return
 		}
 		//prevent default if we do not handle
@@ -277,15 +322,31 @@ class Otty {
 		e.stopPropagation()
 
 		await this.goto(href)
+		return
 	}
-	addNavigationListener(){
+	handleNavigation(){
 		window.history.scrollRestoration = 'manual'
-		document.addEventListener('click', this.navigationF.bind(this))
-		window.addEventListener('popstate', (e) => {
-			if(e.state){
-				this.pageReplace(e.state.page, e.state.scroll)
+		document.addEventListener('click', this.linkClickedF.bind(this))
+		window.addEventListener('popstate', ((e) => {
+			console.log("popstate hit", e, e.state, "ref: ", this.historyReferenceLocation, this.historyReferences )
+			//make sure everything is there and it is something we wanna handle
+			if(e.state && (e.state.scroll != undefined) && (e.state.historyReferenceLocation != undefined)){
+				if(this.historyReferences[e.state.historyReferenceLocation]){
+					let page = this.historyReferences[e.state.historyReferenceLocation].page
+					if(page){
+						//replace page and set the location.
+						this.historyReferenceLocation = e.state.historyReferenceLocation
+						this.pageReplace(page.cloneNode(true), e.state.scroll)
+						return
+					}
+				}
 			}
-		})
+			// was going to failover to page reload, but apparently safari throws popstates on page load? Weirdos.
+			// Safaris such a pain. Apple. Ugh. The only people design on apple is because it fails there first.
+			//
+			// this.goto(window.location.href, {reload: true})
+		}).bind(this))
+		this.updatePageState(window.location, false)
 	}
 	//polling is untested
 	poll = (dat) => {
@@ -341,5 +402,4 @@ class Otty {
 			}).then(poll, err_log)
 	}
 }
-
-export default Otty
+export { Otty }
