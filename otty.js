@@ -281,13 +281,14 @@ class Otty {
 
 			//in case of redirect...
 			if(xhr.responseURL){
-				href = xhr.responseURL
+				href = new URL(xhr.responseURL)
 			}
 
 			this.pageReplace(page, 0)
 
 			//push the new page state. 
 			if(!(opts.reload)){
+				console.log("href is ", href)
 				this.updatePageState(href, true)
 			} else {
 				this.updatePageState(loc)
