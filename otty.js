@@ -108,15 +108,15 @@ class Otty {
 			}
 		}.bind(this))
 	}
-	isLocalUrl(url, subdomain_accuracy = -2) {
+	isLocalUrl(url, subdomainAccuracy = -2) {
 		//local includes subdomains. So if we are on x.com, x.com will work and y.x.com will work, but y.com wont.
 		//change the -2 to -3, -4 etc to modify. Times where this may be an issue:
 		//	- if you share domains with untrusted partys.
 
 		let d = window.location.hostname
-		let urld = (new URL(url, window.location.origin)).hostname //url_with_default_host
+		let urld = (new URL(url, window.location)).hostname //url_with_default_host
 
-		if( d.split('.').slice(subdomain_accuracy).join('.') == urld.split('.').slice(subdomain_accuracy).join('.')) {
+		if( d.split('.').slice(subdomainAccuracy).join('.') == urld.split('.').slice(subdomainAccuracy).join('.')) {
 			return true
 		}
 
@@ -203,7 +203,7 @@ class Otty {
 		morphdom(document.head, tempdocHead)
 	}
 
-	pageReplace(tempdoc, scroll){
+	pageReplace(tempdoc, scroll, url){
 		//standardize tempdoc (accept strings)
 		if(typeof tempdoc == "string") {
 			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
@@ -219,14 +219,26 @@ class Otty {
 		if((!orienter) || (!tmpOrienter)){
 			tmpOrienter = tempdoc.querySelector('body') //.body does not work here
 			orienter = document.body
+			console.log("AAAAAAAAAAAAAAAAA", tmpOrienter, orienter)
+			// document.body.bod.children = tempdoc.querySelector('body').children
+			orienter.replaceChildren(...tmpOrienter.children)
+		} else {
+			console.log("BBBBBB")
+			orienter.replaceWith(tmpOrienter)
 		}
 
-		orienter.replaceWith(tmpOrienter)
 
 		//morph the head to the new head. Throw into a different function for
 		//any strangeness that one may encounter and 
 		this.navigationHeadMorph(tempdoc.querySelector('head'))
 
+		if(url && url.hash && (!scroll)){
+			let el = document.getElementById(decodeURIComponent(url.hash.slice(1)))
+			if(el){
+				el.scrollIntoView()
+				return
+			}
+		}
 		window.scroll(0, scroll)
 	}
 
@@ -237,7 +249,7 @@ class Otty {
 			if(push){ this.historyReferenceLocation += 1 }
 			this.historyReferences[this.historyReferenceLocation] = {
 				page: document.documentElement.cloneNode(true),
-				origin: url.origin, pathname: url.pathname, search: url.search
+				url: url
 			}
 			if(push){
 				//remove futures since we just started new branch
@@ -260,7 +272,7 @@ class Otty {
 		opts = {reload: false, ...opts}
 		let f = async function(resolve, reject){
 			let loc = window.location
-			href = (new URL(href, loc.origin)).href
+			href = new URL(href, loc)
 
 			//start getting the new info
 			let prom = this.sendsXHR({
@@ -281,14 +293,15 @@ class Otty {
 
 			//in case of redirect...
 			if(xhr.responseURL){
-				href = new URL(xhr.responseURL)
+				let nhref = new URL(xhr.responseURL)
+				nhref.hash = href.hash
+				href = nhref
 			}
 
-			this.pageReplace(page, 0)
+			this.pageReplace(page, 0, href)
 
 			//push the new page state. 
 			if(!(opts.reload)){
-				console.log("href is ", href)
 				this.updatePageState(href, true)
 			} else {
 				this.updatePageState(loc)
@@ -322,6 +335,8 @@ class Otty {
 		e.preventDefault()
 		e.stopPropagation()
 
+		// if(window.location.)
+
 		await this.goto(href)
 		return
 	}
@@ -332,12 +347,14 @@ class Otty {
 			console.log("popstate hit", e, e.state, "ref: ", this.historyReferenceLocation, this.historyReferences )
 			//make sure everything is there and it is something we wanna handle
 			if(e.state && (e.state.scroll != undefined) && (e.state.historyReferenceLocation != undefined)){
-				if(this.historyReferences[e.state.historyReferenceLocation]){
-					let page = this.historyReferences[e.state.historyReferenceLocation].page
+				let hr = this.historyReferences[e.state.historyReferenceLocation]
+				if(hr){
+					let page = hr.page
+					let url = hr.url
 					if(page){
 						//replace page and set the location.
 						this.historyReferenceLocation = e.state.historyReferenceLocation
-						this.pageReplace(page.cloneNode(true), e.state.scroll)
+						this.pageReplace(page.cloneNode(true), e.state.scroll, url)
 						return
 					}
 				}

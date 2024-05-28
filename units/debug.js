@@ -1,4 +1,4 @@
-import Generic from './generic.js'
+import { Generic } from './generic.js'
 let Debug = {
 	unitName: "Debug",
 	unitRemoved(){

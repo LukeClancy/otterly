@@ -1,32 +1,26 @@
-import Generic from "./units/generic.js"
+import { Generic } from "./units/generic.js"
 
-// import '@ungap/custom-elements'; //< this is a polyfill fo the is="" attribute and element extensions
-	//which we use heavily
-
-// - look into onload, load, rendered, whatever. Add events for these
-// - Look into storing page and scroll location when clicking through links. A prev_page variable, and prev_y variable I suppose.
-// - might be able to do that with the forward button too?
-// - 
-// current thinking, use this is="" plugin for most of the heavy lifting. Its constructor should
-//	be autocalled.
-// https://github.com/ungap/custom-elements#readme
-// <script src="//unpkg.com/@ungap/custom-elements"></script>
-
-//what we need from user
-//	- csrf selector.
-//	- is development? Boolean for console dumps.
-//	- passback of Generic and TripwireActions (or whatever we end up calling it) so
-//		they can add their own things.
-//	- unit classes they have created.
+//this file contains all the code for Unit Handling (data-unit, data-ex). It also includes shortcuts
+//for element access.
+//
+//we:
+//	1. create shortcuts for easier access to important html funcionality (currentTarget = ct, dataset = ds, e.currentTarget.dataSet.x = e.ct.ds.x).
+//		These attributes get used constantly, this helps think about the more important bits.
+//	2. Accept a bunch of custom units.
+//	3. Initial load those units and event handlers
+//	4. Create observers for those attributes and keep it updated.
 
 class UnitHandler {
+	constructor(unit_list){
+		this.units = unit_list
+		this.shortcuts()
+		this.handleFirstUnits()
+		//mutation that keeps track of all this stuff
+		this.createObserver()
+
+		return this
+	}
 	shortcuts(){
-		Object.defineProperties(Generic, {
-			el: {
-				get: function(){return this.element},
-				set: function(v){return this.element = v}
-			}
-		})
 		Object.defineProperties(Event.prototype, {
 			ct: {
 				get: function(){return this.currentTarget},
@@ -48,7 +42,10 @@ class UnitHandler {
 		if(ob._unit == undefined) {
 			ob._unit = {...Generic}
 		}
-		let cs = [ob._unit]
+		let onConnected = []
+		let onRemoved = []
+		let u = ob._unit
+		let cs = [u]
 		// console.log('nms', nms)
 		for(let nm of nms){
 			let c = this.units[nm]
@@ -58,8 +55,38 @@ class UnitHandler {
 				cs.push(c)
 			}
 		}
+
+		//Collected onConnected / onRemoved events that happen to all
+		for(let u of cs){
+			if(u.onConnected){onConnected.push(u.onConnected)}
+			if(u.onRemoved){onRemoved.push(u.onRemoved)}
+		}
+		
 		Object.assign(...cs)
-		ob._unit.element = ob
+		Object.defineProperties(u, {
+			el: {
+				get: function(){return this.element},
+				set: function(v){return this.element = v}
+			}
+		})
+		u.el = ob
+
+		if(onConnected.length > 0){
+			u.unitConnected= (function(oc, uc) {
+				uc.bind(this)()
+				for(let f of oc){
+					f.bind(this)()
+				}
+			}).bind(u, onConnected, u.unitConnected)
+		}
+		if(onRemoved.length > 0) {
+			u.unitRemoved= (function(or, ur) {
+				ur.bind(this)()
+				for(let f of or){
+					f.bind(this)()
+				}
+			}).bind(u, onRemoved, u.unitRemoved)
+		}
 		return ob
 	}
 	getEventDetails(x, x_node){
@@ -132,7 +159,7 @@ class UnitHandler {
 					}
 				}
 				if(json == undefined){
-					console.error('parse issue in data-x, json expected')
+					console.error('parse issue in data-on, json expected')
 				}
 				current.input = json
 				x = x.substr(end + 1)
@@ -156,7 +183,7 @@ class UnitHandler {
 			if(current.action == undefined){current.action = 'connect'}
 			if(current.input == undefined){current.input = []}
 			//current unit should stay undefined if not
-			if(current.f_name == undefined || current.f_name == ''){throw new Error("parse issue in data-x, no function name found")}
+			if(current.f_name == undefined || current.f_name == ''){throw new Error("parse issue in data-on, no function name found")}
 			return JSON.stringify(current)
 		})
 		return all
@@ -192,9 +219,9 @@ class UnitHandler {
 		}
 
 		//initial executors load
-		let load_xs = Array.from(document.querySelectorAll('[data-x]'))
+		let load_xs = Array.from(document.querySelectorAll('[data-on]'))
 		for(node of load_xs) {
-			let evs = this.parseEventString(node.dataset.x)
+			let evs = this.parseEventString(node.dataset.on)
 			for(let ev of evs){
 				[unit, x_node, trig, f] = this.getEventDetails(ev, node)
 				unit.addUnitEvent(x_node, trig, f, JSON.stringify(ev))
@@ -206,10 +233,15 @@ class UnitHandler {
 			node._unit.unitConnected()
 		}
 	}
+	qsInclusive(n, pat){
+		let units = Array.from(n.querySelectorAll(pat))
+		if(n.matches(pat)){units.push(n)}
+		return units
+	}
 	createObserver(){
 		this.observer = new MutationObserver((ma) => {
-			let n, ns, chls, mut, attrs, unit_attrs, x_attrs
-			// console.log('mutation', ma)
+			let n, ns, chls, mut, attrs
+			console.log('mutation', ma)
 			ns = []
 			ma = Array.from(ma)
 			// ma = ma.filter((m) => {return m.type == "childList" || m.type == "attributes"})
@@ -217,16 +249,22 @@ class UnitHandler {
 			for(mut of chls) {
 				//remove units
 				for(n of mut.removedNodes) {
-					//text nodes dont have datasets 😅
-					if(n.dataset && n.dataset.unit) { n.unitRemoved() }
+					//text nodes included 😅
+					if(! n.querySelector ){ continue }
+					let units = this.qsInclusive(n, '[data-unit]')
+					for(let u of units){ u._unit.unitRemoved() }
 				}
 				//add units, push to list for later calling connected after everything is linked up
 				for(n of mut.addedNodes) {
-					if(n.dataset && n.dataset.unit){ ns.push(this.addUnit(n)) }
+					if(! n.querySelector ){ continue }
+					let units = this.qsInclusive(n, '[data-unit]')
+					for(let u of units){ ns.push(this.addUnit(u)) }
+					let evNodes = this.qsInclusive(n, '[data-unit]')
+					for(let evNode of evNodes){this.changeEvents(evNode, evNode.dataset.on, '')}
 				}
 			}
 			attrs = ma.filter((m) => {
-				return (m.type == "attributes" && (m.attributeName == 'data-unit' || m.attributeName == 'data-x'))
+				return (m.type == "attributes" && (m.attributeName == 'data-unit' || m.attributeName == 'data-on'))
 			})
 			//sometimes if you change an attribute, instead of one mutation, it throws up 2, one removing
 			//the previous value, one adding the new. We get rid of that now. Also set up for next.
@@ -235,7 +273,7 @@ class UnitHandler {
 			let dus, xs, target, oldValue, it
 			let mattrs = new Map([
 				['data-unit', dus = new Map()],
-				['data-x',xs = new Map()]
+				['data-on',xs = new Map()]
 			])
 			//ensure that we get 1 of every combo with the most non-nully oldValue
 			for(mut of attrs){
@@ -277,7 +315,7 @@ class UnitHandler {
 			while(!((target = it.next()).done)) {
 				target = target.value
 				oldValue = xs.get(target)
-				this.changeEvents(target, target.dataset.x, oldValue)
+				this.changeEvents(target, target.dataset.on, oldValue)
 			}
 			//call unit connected
 			for(n of ns) { n._unit.unitConnected() }
@@ -286,22 +324,11 @@ class UnitHandler {
 		//actual observation
 		this.observer.observe(document.body, {
 			"childList": true, "attributes": true, "subtree": true,
-			"attributeFilter": ['data-x', 'data-unit'], "attributeOldValue": true
+			"attributeFilter": ['data-on', 'data-unit'], "attributeOldValue": true
 		})
 
 		return this.observer
 	}
-
-	constructor(unit_list){
-		this.units = unit_list
-		this.shortcuts()
-		this.handleFirstUnits()
-		//mutation that keeps track of all this stuff
-		this.createObserver()
-
-		return this.observer
-	}
-	
 }
 
 export { UnitHandler, Generic }

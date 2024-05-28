@@ -71,8 +71,15 @@ let Generic = {
 	},
 	diveOptParams: ['url', 'method', 'csrfContent',
 		'csrfHeader', 'csrfSelector', 'confirm',
-		'withCredentials', 'e', 'submitter', ],
+		'withCredentials', 'e', 'submitter'],
 	diveErrParams: ['formInfo', 'xhrChangeF', 'baseElement'],
+	relevantData(e){
+		if(e){
+			return {unitId: el.id, submitterId: e.ct.id, ...el.dataset, ...e.ct.dataset}
+		} else {
+			return {unitId: el.id, ...el.dataset}
+		}
+	},
 	diveInfo(e, h = {}){
 	//this function is for formatting html data into a format for an otty dive. Behaviours:
 	//	1. returns an object with the dive options, including the formInfo option (which has the information sent to the server)
@@ -90,9 +97,9 @@ let Generic = {
 	//	note that if there are any formData keys (through formData or inputs options) then function will return a FormData object.
 		let defaults = {
 			opts: {e: e, method: 'POST', formInfo: {}},
-			data: { unitId: el.id, submitterId: e.ct.id, ...el.dataset, ...e.ct.dataset }, 
+			data: { ...this.relevantData(e) }, 
 			formData: new FormData(),
-			inputs: true
+			inputs: false
 		}
 		h = { ...defaults, ...h	}
 		h.opts = {...defaults.opts, ...h.opts} //regain e and formInfo
@@ -129,4 +136,4 @@ let Generic = {
 		otty.dive(this.diveInfo(e, h))
 	}
 }
-export default Generic
+export {Generic}
