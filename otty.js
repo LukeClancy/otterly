@@ -9,7 +9,6 @@ export default class Otty {
 		this.poll_path = '/api/poll'
 		this.csrfSelector = csrfSelector
 		this.csrfHeader = csrfHeader
-		return this
 	}
 	obj_to_fd = function(formInfo, formData) {
 		if(formInfo instanceof FormData) {
