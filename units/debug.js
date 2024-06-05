@@ -1,4 +1,4 @@
-import { Generic } from './generic.js'
+import Generic from './generic.js'
 export default {
 	unitName: "Debug",
 	unitRemoved(){
