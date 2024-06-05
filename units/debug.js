@@ -1,5 +1,5 @@
 import { Generic } from './generic.js'
-let Debug = {
+export default {
 	unitName: "Debug",
 	unitRemoved(){
 		console.log('unitRemoved')
@@ -19,4 +19,3 @@ let Debug = {
 		console.log(this, ...args)
 	}
 }
-export {Debug}

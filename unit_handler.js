@@ -1,4 +1,4 @@
-import { Generic } from "./units/generic.js"
+import Generic from "./units/generic.js"
 
 //this file contains all the code for Unit Handling (data-unit, data-ex). It also includes shortcuts
 //for element access.
@@ -10,7 +10,7 @@ import { Generic } from "./units/generic.js"
 //	3. Initial load those units and event handlers
 //	4. Create observers for those attributes and keep it updated.
 
-class UnitHandler {
+export default class UnitHandler {
 	constructor(unit_list){
 		this.units = unit_list
 		this.shortcuts()
@@ -103,7 +103,6 @@ class UnitHandler {
 		// we can do 2 and 3 at a point.	
 		let func, unit
 	
-		console.log(x)
 
 		if(x.unit) {
 			unit = x_node.closest(`[data-unit~=\'${x.unit}\']`)._unit
@@ -241,7 +240,7 @@ class UnitHandler {
 	createObserver(){
 		this.observer = new MutationObserver((ma) => {
 			let n, ns, chls, mut, attrs
-			console.log('mutation', ma)
+			// console.log('mutation', ma)
 			ns = []
 			ma = Array.from(ma)
 			// ma = ma.filter((m) => {return m.type == "childList" || m.type == "attributes"})
@@ -330,5 +329,3 @@ class UnitHandler {
 		return this.observer
 	}
 }
-
-export { UnitHandler, Generic }

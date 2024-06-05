@@ -1,4 +1,4 @@
-let Generic = {
+export default Generic = {
 	unitName: "Generic",
 	unitRemoved(){
 		//consider removing unit events when unit is removed. I think it might be a bad idea actually
@@ -136,4 +136,3 @@ let Generic = {
 		otty.dive(this.diveInfo(e, h))
 	}
 }
-export {Generic}

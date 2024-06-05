@@ -1,5 +1,5 @@
 import morphdom from 'morphdom'
-class AfterDive {
+export default class AfterDive {
 	constructor(baseElement, submitter, resolve, reject, development){
 		this.baseElement = baseElement
 		this.submitter = submitter
@@ -157,4 +157,3 @@ class AfterDive {
 		}
 	}
 }
-export { AfterDive }

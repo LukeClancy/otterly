@@ -1,6 +1,6 @@
 import morphdom from 'morphdom'
 
-class Otty {
+export default class Otty {
 	constructor(isDev, afterDive, csrfSelector, csrfHeader) {
 		this.isDev = isDev
 		this.previousDives = []
@@ -9,6 +9,7 @@ class Otty {
 		this.poll_path = '/api/poll'
 		this.csrfSelector = csrfSelector
 		this.csrfHeader = csrfHeader
+		return this
 	}
 	obj_to_fd = function(formInfo, formData) {
 		if(formInfo instanceof FormData) {
@@ -219,15 +220,11 @@ class Otty {
 		if((!orienter) || (!tmpOrienter)){
 			tmpOrienter = tempdoc.querySelector('body') //.body does not work here
 			orienter = document.body
-			console.log("AAAAAAAAAAAAAAAAA", tmpOrienter, orienter)
 			// document.body.bod.children = tempdoc.querySelector('body').children
 			orienter.replaceChildren(...tmpOrienter.children)
 		} else {
-			console.log("BBBBBB")
 			orienter.replaceWith(tmpOrienter)
 		}
-
-
 		//morph the head to the new head. Throw into a different function for
 		//any strangeness that one may encounter and 
 		this.navigationHeadMorph(tempdoc.querySelector('head'))
@@ -242,9 +239,12 @@ class Otty {
 		window.scroll(0, scroll)
 	}
 
-	updatePageState(url, push = false){
+	//update page state pushes current page html and url onto historyReferences,
+	//	and then pushes a new state onto the browser window.
+	updatePageState(url, opts = {push: false}){
 		//need to create a new history state if pushing or replace if not. Promisify since
 		//before following link we have to wait for the clone, but on a regular load we dont.
+		let push = opts.push
 		new Promise((resolve, reject) => {
 			if(push){ this.historyReferenceLocation += 1 }
 			this.historyReferences[this.historyReferenceLocation] = {
@@ -302,7 +302,7 @@ class Otty {
 
 			//push the new page state. 
 			if(!(opts.reload)){
-				this.updatePageState(href, true)
+				this.updatePageState(href, {push: true})
 			} else {
 				this.updatePageState(loc)
 			}
@@ -323,6 +323,24 @@ class Otty {
 		if((!win_loc) || url.search == ref.search){return true}
 		return false
 	}
+
+	stopGoto(href){
+		//Check scroll to hash on same page
+		let loc = window.location
+		console.log(loc, href)
+		href = new URL(href, loc)
+		if(loc.origin == href.origin && href.path == loc.path && href.hash ){
+			let el = document.getElementById(decodeURIComponent(href.hash.slice(1)))
+			if(el){
+				el.scrollIntoView()
+				updatePageState(href)
+				return true
+			}
+		}
+		
+		return false
+	}
+
 	async linkClickedF(e) {
 		let href = e.target.closest('[href]')
 		if(!href){ return }
@@ -335,7 +353,7 @@ class Otty {
 		e.preventDefault()
 		e.stopPropagation()
 
-		// if(window.location.)
+		if(this.stopGoto(href)){ return }
 
 		await this.goto(href)
 		return
@@ -364,7 +382,16 @@ class Otty {
 			//
 			// this.goto(window.location.href, {reload: true})
 		}).bind(this))
-		this.updatePageState(window.location, false)
+
+		this.updatePageState(window.location, {push: false})
+
+		let loc = window.location
+		if(loc.hash){
+			let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
+			if(e){
+				e.scrollIntoView()
+			}
+		}
 	}
 	//polling is untested
 	poll = (dat) => {
@@ -420,4 +447,3 @@ class Otty {
 			}).then(poll, err_log)
 	}
 }
-export { Otty }
