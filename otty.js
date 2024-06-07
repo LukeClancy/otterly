@@ -228,13 +228,11 @@ export default class Otty {
 		//any strangeness that one may encounter and 
 		this.navigationHeadMorph(tempdoc.querySelector('head'))
 
-		if(url && url.hash && (!scroll)){
-			let el = document.getElementById(decodeURIComponent(url.hash.slice(1)))
-			if(el){
-				el.scrollIntoView()
-				return
-			}
+		let shouldScrollToEl = (url && (!scroll))
+		if(shouldScrollToEl && this.scrollToLocationHashElement(url)){
+			return
 		}
+
 		window.scroll(0, scroll)
 	}
 
@@ -326,17 +324,11 @@ export default class Otty {
 	stopGoto(href){
 		//Check scroll to hash on same page
 		let loc = window.location
-		console.log(loc, href)
 		href = new URL(href, loc)
-		if(loc.origin == href.origin && href.path == loc.path && href.hash ){
-			let el = document.getElementById(decodeURIComponent(href.hash.slice(1)))
-			if(el){
-				el.scrollIntoView()
-				updatePageState(href)
-				return true
-			}
+
+		if(loc.origin == href.origin && href.path == loc.path){
+			return this.scrollToLocationHashElement(href)
 		}
-		
 		return false
 	}
 
@@ -353,9 +345,19 @@ export default class Otty {
 		e.stopPropagation()
 
 		if(this.stopGoto(href)){ return }
-
 		await this.goto(href)
 		return
+	}
+
+	scrollToLocationHashElement(loc){
+		if(loc.hash){
+			let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
+			if(e){
+				e.scrollIntoView()
+				return true
+			}
+		}
+		return false
 	}
 	handleNavigation(){
 		window.history.scrollRestoration = 'manual'
@@ -384,13 +386,7 @@ export default class Otty {
 
 		this.updatePageState(window.location, {push: false})
 
-		let loc = window.location
-		if(loc.hash){
-			let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
-			if(e){
-				e.scrollIntoView()
-			}
-		}
+		this.scrollToLocationHashElement(window.location)
 	}
 	//polling is untested
 	poll = (dat) => {
