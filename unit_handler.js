@@ -50,7 +50,7 @@ export default class UnitHandler {
 		for(let nm of nms){
 			let c = this.units[nm]
 			if(c == undefined) {
-				console.error('data-unit\'s \'' + nm + '\' is not matching any of unit classes.')
+				console.error('data-unit\'s \'' + nm + '\' is not matching any unit names.')
 			} else if (!(c == Generic)) {
 				cs.push(c)
 			}
@@ -111,7 +111,7 @@ export default class UnitHandler {
 		}
 		if(unit[x.f_name] == undefined){
 			console.error(`${x.f_name} not defined on unit`)
-			return
+			return null
 		}
 		func = unit[x.f_name].bind(unit, ...x.input)
 	
@@ -188,23 +188,27 @@ export default class UnitHandler {
 		return all
 	}
 	changeEvents(node, new_x, old_x){
-		let nx, ox, trig, f, unit, x_node, x
+		let nx, ox, trig, f, unit, x_node, x, deets
 	
 		new_x = this.parseEventString(new_x)
 		old_x = this.parseEventString(old_x)
 		nx = new_x.filter(x => !old_x.includes(x))
 		ox = old_x.filter(x => !new_x.includes(x))
 		for(x of nx){
-			[unit, x_node, trig, f] = this.getEventDetails(x, node)
+			deets = this.getEventDetails(x, node)
+			if(deets == null){ continue }
+			[unit, x_node, trig, f] = deets
 			unit.addUnitEvent(x_node, trig, f, JSON.stringify(x))
 		}
 		for(x of ox){
-			[unit, x_node, trig, f] = this.getEventDetails(x, node)
+			deets = this.getEventDetails(x, node)
+			if(deets == null){ continue }
+			[unit, x_node, trig, f] = deets
 			unit.removeUnitEvent(x_node, trig, undefined, JSON.stringify(x))
 		}
 	}
 	handleFirstUnits(){
-		let node, x, x_node, trig, f, unit
+		let node, x, x_node, trig, f, unit, deets
 		x = {}
 		for(let u of this.units) {
 			x[u.unitName] = u
@@ -222,7 +226,9 @@ export default class UnitHandler {
 		for(node of load_xs) {
 			let evs = this.parseEventString(node.dataset.on)
 			for(let ev of evs){
-				[unit, x_node, trig, f] = this.getEventDetails(ev, node)
+				deets = this.getEventDetails(ev, node)
+				if(deets == null){continue}
+				[unit, x_node, trig, f] = deets
 				unit.addUnitEvent(x_node, trig, f, JSON.stringify(ev))
 			}
 		}

@@ -64,7 +64,7 @@ export default class Otty {
 	sendsXHR({url, formInfo, method = "POST", xhrChangeF,
 		csrfContent, csrfHeader = this.csrfHeader,
 		csrfSelector = this.csrfSelector,
-		confirm, withCredentials = false, responseType="json",
+		confirm, withCredentials = true, responseType="json",
 		onload = this._sendsXHROnLoad, onerror = this._sendsXHROnError}){
 
 		return new Promise(function(resolve, reject) {
@@ -89,7 +89,7 @@ export default class Otty {
 			//helper so we know where this came from. Super useful when for example, checking
 			//if someones signed in, and figuring out how to notify them that they are not
 			//redirect back with a flash? Or just morph a message up?
-			xhr.setRequestHeader('otty', 'true')
+			xhr.setRequestHeader('Otty', 'true')
 
 			//add a file or something if you want go nuts
 			if(xhrChangeF) {
@@ -266,6 +266,9 @@ export default class Otty {
 	}
 
 	async goto(href, opts = {}){
+
+		if(this.stopGoto(href)){ return }
+
 		opts = {reload: false, ...opts}
 		let f = async function(resolve, reject){
 			let loc = window.location
@@ -276,7 +279,7 @@ export default class Otty {
 				url: href,
 				method: "GET",
 				responseType: "text",											//<- dont try to json parse results
-				xhrChangeF: (xhr) => {xhr.setRequestHeader('ottynav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
+				xhrChangeF: (xhr) => {xhr.setRequestHeader('Ottynav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
 			})
 
 			//update current page state while we wait. This will take into account our ajax changes & such
@@ -326,9 +329,17 @@ export default class Otty {
 		let loc = window.location
 		href = new URL(href, loc)
 
+		//hashes
 		if(loc.origin == href.origin && href.path == loc.path){
 			return this.scrollToLocationHashElement(href)
 		}
+
+		//I wanted my subdomains to be counted too... apparently not possible...
+		if(loc.origin != href.origin){
+			window.location.href = href.origin
+			return true
+		}
+
 		return false
 	}
 
@@ -336,7 +347,7 @@ export default class Otty {
 		let href = e.target.closest('[href]')
 		if(!href){ return }
 		href = href.getAttribute('href')
-		if(!this.isLocalUrl(href)){
+		if(!this.isLocalUrl(href, -99)){
 			return
 		}
 		//prevent default if we do not handle
@@ -344,7 +355,6 @@ export default class Otty {
 		e.preventDefault()
 		e.stopPropagation()
 
-		if(this.stopGoto(href)){ return }
 		await this.goto(href)
 		return
 	}
