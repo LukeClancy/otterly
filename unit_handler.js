@@ -15,8 +15,8 @@ export default class UnitHandler {
 		this.units = unit_list
 		this.shortcuts()
 		this.handleFirstUnits()
-		//mutation that keeps track of all this stuff
-		this.createObserver()
+		
+		this.createObserver() //mutation that keeps track of all this stuff
 
 		return this
 	}
@@ -81,42 +81,15 @@ export default class UnitHandler {
 		}
 		if(onRemoved.length > 0) {
 			u.unitRemoved= (function(or, ur) {
-				ur.bind(this)()
 				for(let f of or){
 					f.bind(this)()
 				}
+				ur.bind(this)()
 			}).bind(u, onRemoved, u.unitRemoved)
 		}
 		return ob
 	}
-	getEventDetails(x, x_node){
-		//click->LikeArea#like				will find the closest LikeArea dataunit and hit like
-		//click->like						will just hit the like function of the closest data unit
-		//option 1: click->like(e, post: true)	will find the closest data unit and run unit.like(e, post: true)
-		//option 2: click->like({})			< the {} gets parsed as javascript and is added to the function call. Issue, only one parameter at a time
-		//option 3: click->like([])			< then we use the ... syntax to expand it and throw in the e as first param. I like this because
-		//										it allows multiple deep parameters in a non shitty way (unlike stimulusjs), while also stopping people from
-		//										habitually inlining js which could become an issue in option 1. Also would prevent having to run JSON.parse on everything.
-		//
-		// I did not like option 1 since it encourages javascript in the html which is kinda messy. Ended up doing
-		// something like this click->like[...]; which works well i think.
-		// we can do 2 and 3 at a point.	
-		let func, unit
-	
 
-		if(x.unit) {
-			unit = x_node.closest(`[data-unit~=\'${x.unit}\']`)._unit
-		} else {
-			unit = x_node.closest('[data-unit]')._unit
-		}
-		if(unit[x.f_name] == undefined){
-			console.error(`${x.f_name} not defined on unit`)
-			return null
-		}
-		func = unit[x.f_name].bind(unit, ...x.input)
-	
-		return [unit, x_node, x.action, func]
-	}
 	parseEventString(x){
 		if(!(x) || x.length == 0){ return [] }
 		if(x[x.length - 1] != ';'){x += ';'}
@@ -187,26 +160,6 @@ export default class UnitHandler {
 		})
 		return all
 	}
-	changeEvents(node, new_x, old_x){
-		let nx, ox, trig, f, unit, x_node, x, deets
-	
-		new_x = this.parseEventString(new_x)
-		old_x = this.parseEventString(old_x)
-		nx = new_x.filter(x => !old_x.includes(x))
-		ox = old_x.filter(x => !new_x.includes(x))
-		for(x of nx){
-			deets = this.getEventDetails(x, node)
-			if(deets == null){ continue }
-			[unit, x_node, trig, f] = deets
-			unit.addUnitEvent(x_node, trig, f, JSON.stringify(x))
-		}
-		for(x of ox){
-			deets = this.getEventDetails(x, node)
-			if(deets == null){ continue }
-			[unit, x_node, trig, f] = deets
-			unit.removeUnitEvent(x_node, trig, undefined, JSON.stringify(x))
-		}
-	}
 	handleFirstUnits(){
 		let node, x, x_node, trig, f, unit, deets
 		x = {}
@@ -243,29 +196,91 @@ export default class UnitHandler {
 		if(n.matches(pat)){units.push(n)}
 		return units
 	}
+	getEventDetails(x, xNode, brokenParent = null){
+		//click->LikeArea#like				will find the closest LikeArea dataunit and hit like
+		//click->like						will just hit the like function of the closest data unit
+		//option 1: click->like(e, post: true)	will find the closest data unit and run unit.like(e, post: true)
+		//option 2: click->like({})			< the {} gets parsed as javascript and is added to the function call. Issue, only one parameter at a time
+		//option 3: click->like([])			< then we use the ... syntax to expand it and throw in the e as first param. I like this because
+		//										it allows multiple deep parameters in a non shitty way (unlike stimulusjs), while also stopping people from
+		//										habitually inlining js which could become an issue in option 1. Also would prevent having to run JSON.parse on everything.
+		//
+		// I did not like option 1 since it encourages javascript in the html which is kinda messy. Ended up doing
+		// something like this click->like[...]; which works well i think. OFC we made writing out the unit optional
+
+		let getUnit = (from, x) => {
+			if(x.unit) {
+				return from.closest(`[data-unit~=\'${x.unit}\']`)
+			} else {
+				return  from.closest('[data-unit]')
+			}
+		}
+		let unit = getUnit(xNode, x)
+		//so when we remove the event, its not in the parents doc
+		//which can make things weird, hence brokenParent.
+		if(brokenParent && !unit){ unit = getUnit(brokenParent, x) }
+
+		if((!unit) || (! (unit = unit._unit)) || (!unit[x.f_name])){
+			if(!unit){
+				console.error(`data-on error, unable to find unit requested for '${x.f_name}'`)	
+			}else{
+				console.error(`data-on error, '${x.f_name}' not defined on unit`) }
+			return null
+		}
+		let func = unit[x.f_name].bind(unit, ...x.input)
+	
+		return [unit, xNode, x.action, func]
+	}
+	changeEvents(node, new_x, old_x, opts){
+		let trig, f, unit, xNode, x, deets, nx, ox
+
+		new_x = this.parseEventString(new_x)
+		old_x = this.parseEventString(old_x)
+		
+		nx = new_x.filter(x => !old_x.includes(x))
+		ox = old_x.filter(x => !new_x.includes(x))
+		for(x of ox){
+			deets = this.getEventDetails(x, node, opts.brokenParent)
+			if(deets == null){ continue }
+			[unit, xNode, trig, f] = deets
+			unit.removeUnitEvent(xNode, trig, undefined, JSON.stringify(x))
+		}
+		for(x of nx){
+			deets = this.getEventDetails(x, node)
+			if(deets == null){ continue }
+			[unit, xNode, trig, f] = deets
+			unit.addUnitEvent(xNode, trig, f, JSON.stringify(x))
+		}
+	}
 	createObserver(){
 		this.observer = new MutationObserver((ma) => {
 			let n, ns, chls, mut, attrs
-			// console.log('mutation', ma)
 			ns = []
 			ma = Array.from(ma)
-			// ma = ma.filter((m) => {return m.type == "childList" || m.type == "attributes"})
+			//get children
 			chls = ma.filter((m) => {return m.type == 'childList'})
 			for(mut of chls) {
-				//remove units
+				//remove events and then units. Broken parents
+				//are a little weird but it works.
 				for(n of mut.removedNodes) {
-					//text nodes included 😅
+					let brokenParent = mut.target
+
 					if(! n.querySelector ){ continue }
+
+					let evNodes = this.qsInclusive(n, '[data-on]')
+					for(let evNode of evNodes){ this.changeEvents(evNode, '', evNode.dataset.on, { brokenParent }) }
+
 					let units = this.qsInclusive(n, '[data-unit]')
-					for(let u of units){ u._unit.unitRemoved() }
+					for(let u of units){ u._unit.unitRemoved() } //generic.js sets ._unit to undefined
 				}
-				//add units, push to list for later calling connected after everything is linked up
+				//add units and then events
 				for(n of mut.addedNodes) {
 					if(! n.querySelector ){ continue }
 					let units = this.qsInclusive(n, '[data-unit]')
 					for(let u of units){ ns.push(this.addUnit(u)) }
-					let evNodes = this.qsInclusive(n, '[data-unit]')
-					for(let evNode of evNodes){this.changeEvents(evNode, evNode.dataset.on, '')}
+
+					let evNodes = this.qsInclusive(n, '[data-on]')
+					for(let evNode of evNodes){ this.changeEvents(evNode, evNode.dataset.on, '') }
 				}
 			}
 			attrs = ma.filter((m) => {
@@ -278,7 +293,7 @@ export default class UnitHandler {
 			let dus, xs, target, oldValue, it
 			let mattrs = new Map([
 				['data-unit', dus = new Map()],
-				['data-on',xs = new Map()]
+				['data-on', xs = new Map()]
 			])
 			//ensure that we get 1 of every combo with the most non-nully oldValue
 			for(mut of attrs){
@@ -286,6 +301,8 @@ export default class UnitHandler {
 					mattrs.get(mut.attributeName).set(mut.target, mut.oldValue)
 				}
 			}
+			console.log('mattrs', mattrs, attrs)
+
 			it = dus.keys()
 			while(!((target = it.next()).done)) {
 				target = target.value
@@ -301,7 +318,6 @@ export default class UnitHandler {
 
 				if(!(target.dataset.unit)){
 					target._unit.unitRemoved()
-					target._unit = undefined
 				} else {
 					if(!oldValue){oldValue = ''}
 					let ol = oldValue.split(' ')
