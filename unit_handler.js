@@ -32,7 +32,7 @@ export default class UnitHandler {
 				set: function(v) {return (this.dataset = v)}
 			}
 		})
-		HTMLElement.prototype.q = function(str){ return this.querySelector(str) }
+		HTMLElement.prototype.qs = function(str){ return this.querySelector(str) }
 		HTMLElement.prototype.qa = function(str){ return this.querySelectorAll(str) }		
 	}
 	addUnit(ob, nms) {
@@ -196,7 +196,7 @@ export default class UnitHandler {
 		if(n.matches(pat)){units.push(n)}
 		return units
 	}
-	getEventDetails(x, xNode, brokenParent = null){
+	getEventDetails(x, xNode, brokenParent){
 		//click->LikeArea#like				will find the closest LikeArea dataunit and hit like
 		//click->like						will just hit the like function of the closest data unit
 		//option 1: click->like(e, post: true)	will find the closest data unit and run unit.like(e, post: true)
@@ -231,7 +231,7 @@ export default class UnitHandler {
 	
 		return [unit, xNode, x.action, func]
 	}
-	changeEvents(node, new_x, old_x, opts){
+	changeEvents(node, new_x, old_x, brokenParent){
 		let trig, f, unit, xNode, x, deets, nx, ox
 
 		new_x = this.parseEventString(new_x)
@@ -240,7 +240,7 @@ export default class UnitHandler {
 		nx = new_x.filter(x => !old_x.includes(x))
 		ox = old_x.filter(x => !new_x.includes(x))
 		for(x of ox){
-			deets = this.getEventDetails(x, node, opts.brokenParent)
+			deets = this.getEventDetails(x, node, brokenParent)
 			if(deets == null){ continue }
 			[unit, xNode, trig, f] = deets
 			unit.removeUnitEvent(xNode, trig, undefined, JSON.stringify(x))
@@ -264,18 +264,18 @@ export default class UnitHandler {
 				//are a little weird but it works.
 				for(n of mut.removedNodes) {
 					let brokenParent = mut.target
-
-					if(! n.querySelector ){ continue }
+					if(! n.querySelector ){ continue } //<- text nodes
 
 					let evNodes = this.qsInclusive(n, '[data-on]')
-					for(let evNode of evNodes){ this.changeEvents(evNode, '', evNode.dataset.on, { brokenParent }) }
+					for(let evNode of evNodes){ this.changeEvents(evNode, '', evNode.dataset.on, brokenParent) }
 
 					let units = this.qsInclusive(n, '[data-unit]')
 					for(let u of units){ u._unit.unitRemoved() } //generic.js sets ._unit to undefined
 				}
 				//add units and then events
 				for(n of mut.addedNodes) {
-					if(! n.querySelector ){ continue }
+					if(! n.querySelector ){ continue } //<- text nodes
+
 					let units = this.qsInclusive(n, '[data-unit]')
 					for(let u of units){ ns.push(this.addUnit(u)) }
 
