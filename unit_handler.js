@@ -301,7 +301,6 @@ export default class UnitHandler {
 					mattrs.get(mut.attributeName).set(mut.target, mut.oldValue)
 				}
 			}
-			// console.log('mattrs', mattrs, attrs)
 
 			it = dus.keys()
 			while(!((target = it.next()).done)) {

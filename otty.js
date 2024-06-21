@@ -203,7 +203,7 @@ export default class Otty {
 		morphdom(document.head, tempdocHead)
 	}
 
-	pageReplace(tempdoc, scroll, url){
+	async pageReplace(tempdoc, scroll, url){
 		//standardize tempdoc (accept strings)
 		if(typeof tempdoc == "string") {
 			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
@@ -229,7 +229,7 @@ export default class Otty {
 		this.navigationHeadMorph(tempdoc.querySelector('head'))
 
 		let shouldScrollToEl = (url && (!scroll))
-		if(shouldScrollToEl && this.scrollToLocationHashElement(url)){
+		if(shouldScrollToEl && (await this.scrollToLocationHashElement(url))){
 			return
 		}
 
@@ -298,7 +298,7 @@ export default class Otty {
 				href = nhref
 			}
 
-			this.pageReplace(page, 0, href)
+			await this.pageReplace(page, 0, href)
 
 			//push the new page state. 
 			if(!(opts.reload)){
@@ -324,14 +324,14 @@ export default class Otty {
 		return false
 	}
 
-	stopGoto(href){
+	async stopGoto(href){
 		//Check scroll to hash on same page
 		let loc = window.location
 		href = new URL(href, loc)
 
 		//hashes
 		if(loc.origin == href.origin && href.path == loc.path){
-			return this.scrollToLocationHashElement(href)
+			return (await this.scrollToLocationHashElement(href))
 		}
 
 		//I wanted my subdomains to be counted too... apparently not possible...
@@ -359,7 +359,7 @@ export default class Otty {
 		return
 	}
 
-	scrollToLocationHashElement(loc){
+	async scrollToLocationHashElement(loc){
 		if(loc.hash){
 			let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
 			if(e){
