@@ -204,36 +204,39 @@ export default class Otty {
 	}
 
 	async pageReplace(tempdoc, scroll, url){
-		//standardize tempdoc (accept strings)
-		if(typeof tempdoc == "string") {
-			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
-		}
+		return new Promise(async (resolve) => {
+			//standardize tempdoc (accept strings)
+			if(typeof tempdoc == "string") {
+				tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
+			}
 
-		//switch the document's this.navigationReplace's css selector elements. if either not found,
-		//default to switching bodies entirely
-		let tmpOrienter, orienter
-		if(this.navigationReplaces){
-			tmpOrienter = tempdoc.querySelector(this.navigationReplaces)
-			orienter = document.querySelector(this.navigationReplaces)
-		}
-		if((!orienter) || (!tmpOrienter)){
-			tmpOrienter = tempdoc.querySelector('body') //.body does not work here
-			orienter = document.body
-			// document.body.bod.children = tempdoc.querySelector('body').children
-			orienter.replaceChildren(...tmpOrienter.children)
-		} else {
-			orienter.replaceWith(tmpOrienter)
-		}
-		//morph the head to the new head. Throw into a different function for
-		//any strangeness that one may encounter and 
-		this.navigationHeadMorph(tempdoc.querySelector('head'))
+			//switch the document's this.navigationReplace's css selector elements. if either not found,
+			//default to switching bodies entirely
+			let tmpOrienter, orienter
+			if(this.navigationReplaces){
+				tmpOrienter = tempdoc.querySelector(this.navigationReplaces)
+				orienter = document.querySelector(this.navigationReplaces)
+			}
+			if((!orienter) || (!tmpOrienter)){
+				tmpOrienter = tempdoc.querySelector('body') //.body does not work here
+				orienter = document.body
+				// document.body.bod.children = tempdoc.querySelector('body').children
+				orienter.replaceChildren(...tmpOrienter.children)
+			} else {
+				orienter.replaceWith(tmpOrienter)
+			}
+			//morph the head to the new head. Throw into a different function for
+			//any strangeness that one may encounter and 
+			this.navigationHeadMorph(tempdoc.querySelector('head'))
 
-		let shouldScrollToEl = (url && (!scroll))
-		if(shouldScrollToEl && (await this.scrollToLocationHashElement(url))){
-			return
-		}
+			let shouldScrollToEl = (url && (!scroll))
+			if(shouldScrollToEl && (await this.scrollToLocationHashElement(url))){
+				return
+			}
 
-		window.scroll(0, scroll)
+			window.scroll(0, scroll)
+			resolve(true)
+		})
 	}
 
 	//update page state pushes current page html and url onto historyReferences,
@@ -242,7 +245,7 @@ export default class Otty {
 		//need to create a new history state if pushing or replace if not. Promisify since
 		//before following link we have to wait for the clone, but on a regular load we dont.
 		let push = opts.push
-		new Promise((resolve, reject) => {
+		return new Promise((resolve, reject) => {
 			if(push){ this.historyReferenceLocation += 1 }
 			this.historyReferences[this.historyReferenceLocation] = {
 				page: document.documentElement.cloneNode(true),
@@ -266,11 +269,10 @@ export default class Otty {
 	}
 
 	async goto(href, opts = {}){
+		return new Promise(async (resolve, reject) => {
+			if(await this.stopGoto(href)){ resolve(-1) }
 
-		if(await this.stopGoto(href)){ return }
-
-		opts = {reload: false, ...opts}
-		let f = async function(resolve, reject){
+			opts = {reload: false, ...opts}
 			let loc = window.location
 			href = new URL(href, loc)
 
@@ -303,14 +305,13 @@ export default class Otty {
 
 			//push the new page state. 
 			if(!(opts.reload)){
-				this.updatePageState(href, {push: true})
+				await this.updatePageState(href, {push: true})
 			} else {
-				this.updatePageState(loc)
+				await this.updatePageState(loc)
 			}
 
 			resolve(href)
-		}
-		return new Promise(f.bind(this))
+		})
 	}
 
 	historyReferenceLocation = 0
@@ -326,22 +327,21 @@ export default class Otty {
 	}
 
 	async stopGoto(href){
-		//Check scroll to hash on same page
-		let loc = window.location
-		href = new URL(href, loc)
-
-		//hashes
-		if(loc.origin == href.origin && href.pathname == loc.pathname){
-			return (await this.scrollToLocationHashElement(href))
-		}
-
-		//I wanted my subdomains to be counted too... apparently not possible...
-		if(loc.origin != href.origin){
-			window.location.href = href.origin
-			return true
-		}
-
-		return false
+		return new Promise(async (resolve) => {
+			//Check scroll to hash on same page
+			let loc = window.location
+			href = new URL(href, loc)
+			//hashes
+			if(loc.origin == href.origin && href.pathname == loc.pathname){
+				resolve(await this.scrollToLocationHashElement(href))
+			}
+			//I wanted my subdomains to be counted too... apparently not possible...
+			if(loc.origin != href.origin){
+				window.location.href = href.origin
+				resolve(true)
+			}
+			resolve(false)
+		})
 	}
 
 	async linkClickedF(e) {
@@ -361,14 +361,16 @@ export default class Otty {
 	}
 
 	async scrollToLocationHashElement(loc){
-		if(loc.hash){
-			let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
-			if(e){
-				e.scrollIntoView()
-				return true
+		return new Promise((resolve) => {
+			if(loc.hash){
+				let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
+				if(e){
+					e.scrollIntoView()
+					resolve(true)
+				}
 			}
-		}
-		return false
+			resolve(false)
+		})
 	}
 	handleNavigation(){
 		window.history.scrollRestoration = 'manual'
