@@ -267,7 +267,7 @@ export default class Otty {
 
 	async goto(href, opts = {}){
 
-		if(this.stopGoto(href)){ return }
+		if(await this.stopGoto(href)){ return }
 
 		opts = {reload: false, ...opts}
 		let f = async function(resolve, reject){
@@ -298,6 +298,7 @@ export default class Otty {
 				href = nhref
 			}
 
+			//wait for scroll to finish before updating state...
 			await this.pageReplace(page, 0, href)
 
 			//push the new page state. 
