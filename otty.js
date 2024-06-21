@@ -331,7 +331,7 @@ export default class Otty {
 		href = new URL(href, loc)
 
 		//hashes
-		if(loc.origin == href.origin && href.path == loc.path){
+		if(loc.origin == href.origin && href.pathname == loc.pathname){
 			return (await this.scrollToLocationHashElement(href))
 		}
 
