@@ -1,4 +1,4 @@
-export default {
+let generic =  {
 	unitName: "Generic",
 	unitRemoved(){
 		this.el._unit = undefined
@@ -137,3 +137,12 @@ export default {
 		otty.dive(this.diveInfo(e, h))
 	}
 }
+
+Object.defineProperties(generic, {
+	el: {
+		get: function(){return this.element},
+		set: function(v){return this.element = v}
+	}
+})
+
+export default generic

@@ -397,8 +397,8 @@ export default class Otty {
 			// this.goto(window.location.href, {reload: true})
 		}).bind(this))
 
+		//do not rely on eachother
 		this.updatePageState(window.location, {push: false})
-
 		this.scrollToLocationHashElement(window.location)
 	}
 	//polling is untested
@@ -425,6 +425,7 @@ export default class Otty {
 			}
 		}).then(maybe_resub).finally(continue_polling)
 	}
+
 	subscribeToPoll = (queues, poll_info, wait_time) => {
 		let id = Math.random()
 		this.ActivePollId = id

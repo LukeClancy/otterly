@@ -1,5 +1,3 @@
-import Generic from "./units/generic.js"
-
 //this file contains all the code for Unit Handling (data-unit, data-ex). It also includes shortcuts
 //for element access.
 //
@@ -11,8 +9,10 @@ import Generic from "./units/generic.js"
 //	4. Create observers for those attributes and keep it updated.
 
 export default class UnitHandler {
-	constructor(unit_list){
+	constructor(generic, unit_list){
+		this.generic = generic
 		this.units = unit_list
+
 		this.shortcuts()
 		this.handleFirstUnits()
 		
@@ -40,7 +40,7 @@ export default class UnitHandler {
 			nms = ob.dataset.unit.split(' ')
 		}
 		if(ob._unit == undefined) {
-			ob._unit = {...Generic}
+			ob._unit = {...this.generic}
 		}
 		let onConnected = []
 		let onRemoved = []
@@ -51,7 +51,7 @@ export default class UnitHandler {
 			let c = this.units[nm]
 			if(c == undefined) {
 				console.error('data-unit\'s \'' + nm + '\' is not matching any unit names.')
-			} else if (!(c == Generic)) {
+			} else if (!(c == this.generic)) {
 				cs.push(c)
 			}
 		}
