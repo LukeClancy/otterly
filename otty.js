@@ -336,7 +336,7 @@ export default class Otty {
 		let replacedInfo = await this.pageReplace(page, 0, href)
 		
 		// this.updatePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, replacedInfo.befY)
-		this.replacePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, window.scrollY)
+		this.replacePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, replacedInfo.befY)
 
 		if(!(opts.reload)){
 			//tore the new page information.
