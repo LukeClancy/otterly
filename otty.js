@@ -334,9 +334,8 @@ export default class Otty {
 		//Note it is important to store the replacement html after removal to allow for things such as onRemoved
 		// to run before we store.
 		let replacedInfo = await this.pageReplace(page, 0, href)
-		
-		// this.updatePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, replacedInfo.befY)
-		this.replacePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, replacedInfo.befY)
+		let s = replacedInfo.befY //?
+		this.replacePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, s)
 
 		if(!(opts.reload)){
 			//tore the new page information.
@@ -373,6 +372,7 @@ export default class Otty {
 				break
 			}
 		}
+		
 		let befY = window.scrollY
 
 		//been having issues with the removed thing triggering.
