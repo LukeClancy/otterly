@@ -38,16 +38,25 @@ export default class UnitHandler {
 	}
 	addUnit(ob, nms) {
 		if(nms == undefined) {
-			nms = ob.dataset.unit.split(' ')
-		}
-		if(ob._unit == undefined) {
-			ob._unit = {...this.generic}
+			nms = ob.dataset.unit.split(' ') 
 		}
 		let onConnected = []
 		let onRemoved = []
-		let u = ob._unit
+		let u
+
+		if(ob._unit == undefined) {
+			ob._unit = {...this.generic}
+			u = ob._unit
+			Object.defineProperties(u, {
+				el: {
+					get: function(){return this.element},
+					set: function(v){return this.element = v}
+				}
+			})
+		} else {
+			u = ob._unit
+		}
 		let cs = [u]
-		// console.log('nms', nms)
 		for(let nm of nms){
 			let c = this.units[nm]
 			if(c == undefined) {
@@ -64,12 +73,6 @@ export default class UnitHandler {
 		}
 		
 		Object.assign(...cs)
-		Object.defineProperties(u, {
-			el: {
-				get: function(){return this.element},
-				set: function(v){return this.element = v}
-			}
-		})
 		u.el = ob
 
 		if(onConnected.length > 0){
@@ -80,6 +83,7 @@ export default class UnitHandler {
 				}
 			}).bind(u, onConnected, u.unitConnected)
 		}
+
 		if(onRemoved.length > 0) {
 			u.unitRemoved= (function(or, ur) {
 				for(let f of or){
