@@ -335,6 +335,7 @@ export default class Otty {
 		// to run before we store.
 		let replacedInfo = await this.pageReplace(page, 0, href)
 		let s = replacedInfo.befY //?
+		console.log({replacedInfo, s})
 		this.replacePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, s)
 
 		if(!(opts.reload)){
@@ -356,6 +357,8 @@ export default class Otty {
 		return storeDoc
 	}
 	async pageReplace(tempdoc, scroll, url){
+		let befY = window.scrollY
+		
 		//standardize tempdoc (accept strings)
 		if(typeof tempdoc == "string") {
 			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
@@ -372,8 +375,6 @@ export default class Otty {
 				break
 			}
 		}
-		
-		let befY = window.scrollY
 
 		//been having issues with the removed thing triggering.
 		//this will do it manually, and then remove the el._unit so
