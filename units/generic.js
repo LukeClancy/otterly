@@ -2,7 +2,10 @@ let generic =  {
 	unitName: "Generic",
 	unitRemoved(){
 		this.el._unit = undefined
-		//consider removing unit events when unit is removed. I think it might be a bad idea actually
+
+		for(let ev of this.unitEvents){
+			ev.obj.removeEventListener()
+		}
 	},
 	unitConnected(){
 	},

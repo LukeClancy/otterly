@@ -1,3 +1,4 @@
+
 //this file contains all the code for Unit Handling (data-unit, data-ex). It also includes shortcuts
 //for element access.
 //
@@ -221,10 +222,13 @@ export default class UnitHandler {
 		if(brokenParent && !unit){ unit = getUnit(brokenParent, x) }
 
 		if((!unit) || (! (unit = unit._unit)) || (!unit[x.f_name])){
-			if(!unit){
-				console.error(`data-on error, unable to find unit requested for '${x.f_name}'`)	
-			}else{
-				console.error(`data-on error, '${x.f_name}' not defined on unit`) }
+			if(otty.isDev){
+				if(!unit){
+					console.warn(`data-on error, unable to find unit requested for '${x.f_name}'`,  xNode)	
+				}else{
+					console.warn(`data-on error, '${x.f_name}' not defined on unit`, xNode)
+				}
+			}
 			return null
 		}
 		let func = unit[x.f_name].bind(unit, ...x.input)
@@ -270,7 +274,7 @@ export default class UnitHandler {
 					for(let evNode of evNodes){ this.changeEvents(evNode, '', evNode.dataset.on, brokenParent) }
 
 					let units = this.qsInclusive(n, '[data-unit]')
-					for(let u of units){ u._unit.unitRemoved() } //generic.js sets ._unit to undefined
+					for(let u of units){ u._unit?.unitRemoved() } //generic.js sets ._unit to undefined
 				}
 				//add units and then events
 				for(n of mut.addedNodes) {
@@ -316,7 +320,7 @@ export default class UnitHandler {
 				//"Hey this stuff is confusing" - do it less.
 
 				if(!(target.dataset.unit)){
-					target._unit.unitRemoved()
+					target._unit?.unitRemoved()
 				} else {
 					if(!oldValue){oldValue = ''}
 					let ol = oldValue.split(' ')
@@ -342,7 +346,7 @@ export default class UnitHandler {
 		})
 
 		//actual observation
-		this.observer.observe(document.body, {
+		this.observer.observe(document.documentElement, {
 			"childList": true, "attributes": true, "subtree": true,
 			"attributeFilter": ['data-on', 'data-unit'], "attributeOldValue": true
 		})

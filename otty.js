@@ -197,133 +197,9 @@ export default class Otty {
 		}.bind(this))
 	}
 	//this will default to replacing body if this css selector naught found.
-	navigationReplaces = undefined
 
 	navigationHeadMorph(tempdocHead){
 		morphdom(document.head, tempdocHead)
-	}
-
-	async pageReplace(tempdoc, scroll, url){
-		return new Promise(async (resolve) => {
-			//standardize tempdoc (accept strings)
-			if(typeof tempdoc == "string") {
-				tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
-			}
-
-			//switch the document's this.navigationReplace's css selector elements. if either not found,
-			//default to switching bodies entirely
-			let tmpOrienter, orienter
-			if(this.navigationReplaces){
-				tmpOrienter = tempdoc.querySelector(this.navigationReplaces)
-				orienter = document.querySelector(this.navigationReplaces)
-			}
-			if((!orienter) || (!tmpOrienter)){
-				tmpOrienter = tempdoc.querySelector('body') //.body does not work here
-				orienter = document.body
-				// document.body.bod.children = tempdoc.querySelector('body').children
-				orienter.replaceChildren(...tmpOrienter.children)
-			} else {
-				orienter.replaceWith(tmpOrienter)
-			}
-			//morph the head to the new head. Throw into a different function for
-			//any strangeness that one may encounter and 
-			this.navigationHeadMorph(tempdoc.querySelector('head'))
-
-			let shouldScrollToEl = (url && (!scroll))
-			if(shouldScrollToEl && (await this.scrollToLocationHashElement(url))){
-				return
-			}
-
-			window.scroll(0, scroll)
-			resolve(true)
-		})
-	}
-
-	//update page state pushes current page html and url onto historyReferences,
-	//	and then pushes a new state onto the browser window.
-	updatePageState(url, opts = {push: false}){
-		//need to create a new history state if pushing or replace if not. Promisify since
-		//before following link we have to wait for the clone, but on a regular load we dont.
-		let push = opts.push
-		return new Promise((resolve, reject) => {
-			if(push){ this.historyReferenceLocation += 1 }
-			this.historyReferences[this.historyReferenceLocation] = {
-				page: document.documentElement.cloneNode(true),
-				url: url
-			}
-			if(push){
-				//remove futures since we just started new branch
-				this.historyReferences = this.historyReferences.slice(0, this.historyReferenceLocation + 1)
-				window.history.pushState({
-					scroll: 0, //<- page was just loaded so
-					historyReferenceLocation: this.historyReferenceLocation
-				}, "", url);
-			} else {
-				window.history.replaceState({
-					scroll: window.scrollY,
-					historyReferenceLocation: this.historyReferenceLocation
-				}, '', url)
-			}
-			resolve(true)
-		})
-	}
-
-	async goto(href, opts = {}){
-		return new Promise(async (resolve, reject) => {
-			if(await this.stopGoto(href)){ resolve(-1) }
-
-			opts = {reload: false, ...opts}
-			let loc = window.location
-			href = new URL(href, loc)
-
-			//start getting the new info
-			let prom = this.sendsXHR({
-				url: href,
-				method: "GET",
-				responseType: "text",											//<- dont try to json parse results
-				xhrChangeF: (xhr) => {xhr.setRequestHeader('Ottynav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
-			})
-
-			//update current page state while we wait. This will take into account our ajax changes & such
-			if(!(opts.reload)){
-				await this.updatePageState(loc)
-			}
-
-			//get and replace page
-			prom = await prom
-			let page = prom.response, xhr = prom.xhr
-
-			//in case of redirect...
-			if(xhr.responseURL){
-				let nhref = new URL(xhr.responseURL)
-				nhref.hash = href.hash
-				href = nhref
-			}
-
-			//wait for scroll to finish before updating state...
-			await this.pageReplace(page, 0, href)
-
-			//push the new page state. 
-			if(!(opts.reload)){
-				await this.updatePageState(href, {push: true})
-			} else {
-				await this.updatePageState(loc)
-			}
-
-			resolve(href)
-		})
-	}
-
-	historyReferenceLocation = 0
-	historyReferences = []
-	compareHistoryReference(url, ref){
-		let same_loc = ( url.origin == ref.origin && url.pathname == ref.pathname)
-		if(!same_loc){return false}
-		let l = window.location
-		let win_loc = (url.origin = l.origin && url.pathname == l.pathname)
-		// so for example /posts?type=content matches /posts unless we are currently on /posts
-		if((!win_loc) || url.search == ref.search){return true}
-		return false
 	}
 
 	async stopGoto(href){
@@ -372,35 +248,7 @@ export default class Otty {
 			resolve(false)
 		})
 	}
-	handleNavigation(){
-		window.history.scrollRestoration = 'manual'
-		document.addEventListener('click', this.linkClickedF.bind(this))
-		window.addEventListener('popstate', ((e) => {
-			console.log("popstate hit", e, e.state, "ref: ", this.historyReferenceLocation, this.historyReferences )
-			//make sure everything is there and it is something we wanna handle
-			if(e.state && (e.state.scroll != undefined) && (e.state.historyReferenceLocation != undefined)){
-				let hr = this.historyReferences[e.state.historyReferenceLocation]
-				if(hr){
-					let page = hr.page
-					let url = hr.url
-					if(page){
-						//replace page and set the location.
-						this.historyReferenceLocation = e.state.historyReferenceLocation
-						this.pageReplace(page.cloneNode(true), e.state.scroll, url)
-						return
-					}
-				}
-			}
-			// was going to failover to page reload, but apparently safari throws popstates on page load? Weirdos.
-			// Safaris such a pain. Apple. Ugh. The only people design on apple is because it fails there first.
-			//
-			// this.goto(window.location.href, {reload: true})
-		}).bind(this))
-
-		//do not rely on eachother
-		this.updatePageState(window.location, {push: false})
-		this.scrollToLocationHashElement(window.location)
-	}
+	
 	//polling is untested
 	poll = (dat) => {
 		if(this.ActivePollId != dat.id) { return } //check if we should stop
@@ -454,5 +302,171 @@ export default class Otty {
 					...dat.poll_info
 				}
 			}).then(poll, err_log)
+	}
+
+	async goto(href, opts = {}){
+		if(await this.stopGoto(href)){ return -1 }
+
+		opts = {reload: false, ...opts}
+		let loc = window.location
+		href = new URL(href, loc)
+
+		//start getting the new info
+		let prom = this.sendsXHR({
+			url: href,
+			method: "GET",
+			responseType: "text",											//<- dont try to json parse results
+			xhrChangeF: (xhr) => {xhr.setRequestHeader('Ottynav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
+		})
+
+		//get and replace page
+		prom = await prom
+		let page = prom.response, xhr = prom.xhr
+
+		//in case of redirect...
+		if(xhr.responseURL){
+			let nhref = new URL(xhr.responseURL)
+			nhref.hash = href.hash
+			href = nhref
+		}
+
+		//replace page , starting at the top of the page. Update page state for where we were before the switch.
+		//Note it is important to store the replacement html after removal to allow for things such as onRemoved
+		// to run before we store.
+		let replacedInfo = await this.pageReplace(page, 0, href)
+		
+		// this.updatePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, replacedInfo.befY)
+		this.replacePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, window.scrollY)
+
+		if(!(opts.reload)){
+			//tore the new page information.
+			this.pushPageState(href, undefined, replacedInfo.replaceSelector)
+		}
+
+		return href
+	}
+	createStorageDoc(orienter, head){
+		orienter = orienter.cloneNode(true)
+		let storeDoc = (new DOMParser()).parseFromString('<!DOCTYPE HTML> <html></html>', 'text/html')
+		if(orienter.nodeName == 'BODY'){
+			storeDoc.body = orienter
+		} else {
+			storeDoc.body.appendChild(orienter)
+		}
+		morphdom(storeDoc.head, head)
+		return storeDoc
+	}
+	async pageReplace(tempdoc, scroll, url){
+		//standardize tempdoc (accept strings)
+		if(typeof tempdoc == "string") {
+			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
+		}
+
+		//switch the document's this.navigationReplace's css selector elements. if either not found,
+		//default to switching bodies entirely
+		let tmpOrienter, orienter,  replaceSelector
+		for(replaceSelector of this.navigationReplaces){
+			// console.log(tempdoc, replaceSelector)
+			tmpOrienter = tempdoc.querySelector(replaceSelector)	
+			orienter = document.querySelector(replaceSelector)
+			if(tmpOrienter && orienter) {
+				break
+			}
+		}
+		let befY = window.scrollY
+
+		//been having issues with the removed thing triggering.
+		//this will do it manually, and then remove the el._unit so
+		//it wont trigger again
+		for(let unitEl of this.qsInclusive(orienter, '[data-unit]')){
+			unitEl._unit?.unitRemoved()
+		}
+	
+		//set stored information for recreating current page
+		let storeDoc =  this.createStorageDoc(orienter, document.head)
+
+		// orienter.replaceChildren(...tmpOrienter.children)
+		orienter.replaceWith(tmpOrienter)
+
+		//morph the head to the new head. Throw into a different function for
+		//any strangeness that one may encounter and 
+		this.navigationHeadMorph(tempdoc.querySelector('head'))
+
+		let shouldScrollToEl = (url && (!scroll))
+		
+		//handle scrolling
+		let scrolled = false
+		if(shouldScrollToEl){
+			scrolled = await this.scrollToLocationHashElement(url)
+		}
+		if(!scrolled){
+			window.scroll(0, scroll)
+		}
+
+		return {doc: storeDoc, befY, replaceSelector} // return the old element replaced
+	}
+	_pageState(scroll, doc, url, replaceSelector, match){
+		this.historyReferences[this.historyReferenceLocation] = {
+			replaceSelector: replaceSelector,
+			doc:  doc,
+			scroll: scroll,
+			url: url,
+			match: match
+		}
+	}
+	replacePageState(url,  doc, replaceSelector, scroll){
+		let matcher = Math.random()
+		window.history.replaceState({
+			historyReferenceLocation: this.historyReferenceLocation,
+			match: matcher
+		}, "", url);
+		this._pageState(scroll, doc, url, replaceSelector, matcher)
+	}
+	pushPageState(url, doc, replaceSelector){
+		let matcher = Math.random()
+		this.historyReferenceLocation += 1
+		this.historyReferences = this.historyReferences.slice(0, this.historyReferenceLocation + 1)
+		window.history.pushState({
+			historyReferenceLocation: this.historyReferenceLocation,
+			match: matcher
+		}, "", url)
+		this._pageState(0, doc, url, replaceSelector, matcher)
+	}
+	qsInclusive(n, pat){
+		let units = Array.from(n.querySelectorAll(pat))
+		if(n.matches(pat)){units.push(n)}
+		return units
+	}
+	handleNavigation(){
+		this.navigationReplaces = ['body']
+		this.historyReferenceLocation = 0
+		this.historyReferences = []
+		history.scrollRestoration = 'manual'
+		document.addEventListener('click', this.linkClickedF.bind(this))
+
+		window.addEventListener('popstate', (async function (e){
+			if(e.state && ( e.state.historyReferenceLocation != undefined)){
+				let lastInf = this.historyReferences[this.historyReferenceLocation]
+				let lastScroll = window.scrollY
+				this.historyReferenceLocation =  e.state.historyReferenceLocation
+				let hr = this.historyReferences[this.historyReferenceLocation]
+				if(hr && hr.match == e.state.match){
+					let replacedInfo  = await this.pageReplace(hr.doc, hr.scroll, hr.url)
+					lastInf.scroll = lastScroll
+					lastInf.doc = replacedInfo.doc
+					lastInf.replaceSelector = replacedInfo.replaceSelector
+				} else {
+					//if they refresh and hit the back button or something it can make things difficult
+					//especially since we still get the state information (thats where the e.state.match comes forward.)
+					this.historyReferenceLocation = 0
+					this.historyReferences = []
+					this.goto(window.location, {reload: true})
+				}
+			}
+		}).bind(this))
+
+		//do not rely on eachother
+		// this.updatePageState(window.location, {push: false})
+		this.scrollToLocationHashElement(window.location)
 	}
 }
