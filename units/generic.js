@@ -2,10 +2,6 @@ let generic =  {
 	unitName: "Generic",
 	unitRemoved(){
 		this.el._unit = undefined
-
-		for(let ev of this.unitEvents){
-			ev.obj.removeEventListener()
-		}
 	},
 	unitConnected(){
 	},
