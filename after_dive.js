@@ -1,5 +1,5 @@
 import morphdom from 'morphdom'
-xport default class AfterDive {
+export default class AfterDive {
 	constructor(baseElement, submitter, resolve, reject, isDev){
 		this.baseElement = baseElement
 		this.submitter = submitter
