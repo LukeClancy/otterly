@@ -66,6 +66,10 @@ export default class Otty {
 		csrfSelector = this.csrfSelector,
 		confirm, withCredentials = true, responseType="json",
 		onload = this._sendsXHROnLoad, onerror = this._sendsXHROnError}){
+		
+		if(!csrfContent){
+			csrfContent = document.querySelector(csrfSelector).content
+		}
 
 		return new Promise(function(resolve, reject) {
 			var xhr, form_data;
@@ -80,10 +84,6 @@ export default class Otty {
 			//get formInfo into the form_data
 			form_data = this.obj_to_fd(formInfo)
 
-			//csrf
-			if(!csrfContent){
-				csrfContent = document.querySelector(csrfSelector).content
-			}
 			xhr.setRequestHeader(csrfHeader, csrfContent)
 			
 			//helper so we know where this came from. Super useful when for example, checking
@@ -108,18 +108,17 @@ export default class Otty {
 			}
 		}.bind(this))
 	}
+
 	isLocalUrl(url, subdomainAccuracy = -2) {
 		//local includes subdomains. So if we are on x.com, x.com will work and y.x.com will work, but y.com wont.
 		//change the -2 to -3, -4 etc to modify. Times where this may be an issue:
 		//	- if you share domains with untrusted partys.
-
 		let d = window.location.hostname
 		let urld = (new URL(url, window.location)).hostname //url_with_default_host
 
 		if( d.split('.').slice(subdomainAccuracy).join('.') == urld.split('.').slice(subdomainAccuracy).join('.')) {
 			return true
 		}
-
 		return false
 	}
 	xss_pass(url){
@@ -144,19 +143,20 @@ export default class Otty {
 		let handle_response = ((actions, resolve, reject) => {
 			let y, ottys_capabilities, task, data, out, returning, dive_id, action
 
-			returning = action
+			returning = actions
 
 			if(!Array.isArray(actions)) {
 				actions = [actions]
 			}
 
 			y = 0
-			ottys_capabilities = new this.afterDive(baseElement, submitter, resolve, reject, isDev)
+			ottys_capabilities = new this.afterDive(baseElement, submitter, resolve, reject, this.isDev)
 
 			for(action of actions) {
+				if(!action){continue}
 				//make sure we have not already processed this dive (matters with polling)
 				dive_id = action.dive_id
-				if(dive_id != null) {
+				if(dive_id) {
 					if( this.previousDives.includes(dive_id) ) {
 						continue;
 					}
@@ -167,14 +167,12 @@ export default class Otty {
 				task = Object.keys(action)[0]
 				data = action[task]
 				if(task == 'eval'){task = 'eval2'}
+				if(this.isDev){ console.log(task, data) }
 				if(task == 'returning') {
 					returning = data
 				} else {
 					try {
 						out = ottys_capabilities[task](data)
-						if(this.isDev){
-							console.log(task, data)
-						}
 					} catch(err) {
 						if(this.isDev){
 							console.log(task, data, err, err.message)
@@ -203,21 +201,19 @@ export default class Otty {
 	}
 
 	async stopGoto(href){
-		return new Promise(async (resolve) => {
-			//Check scroll to hash on same page
-			let loc = window.location
-			href = new URL(href, loc)
-			//hashes
-			if(loc.origin == href.origin && href.pathname == loc.pathname){
-				resolve(await this.scrollToLocationHashElement(href))
-			}
-			//I wanted my subdomains to be counted too... apparently not possible...
-			if(loc.origin != href.origin){
-				window.location.href = href.origin
-				resolve(true)
-			}
-			resolve(false)
-		})
+		//Check scroll to hash on same page
+		let loc = window.location
+		href = new URL(href, loc)
+		//hashes
+		if(loc.origin == href.origin && href.pathname == loc.pathname){
+			return await this.scrollToLocationHashElement(href)
+		}
+		//I wanted my subdomains to be counted too... apparently not possible...
+		if(loc.origin != href.origin){
+			window.location.href = href.origin
+			return true
+		}
+		return false
 	}
 
 	async linkClickedF(e) {
@@ -237,16 +233,15 @@ export default class Otty {
 	}
 
 	async scrollToLocationHashElement(loc){
-		return new Promise((resolve) => {
-			if(loc.hash){
-				let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
-				if(e){
-					e.scrollIntoView()
-					resolve(true)
-				}
+		if(loc.hash){
+			let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
+			if(e){
+				await this.waitForImages()
+				e.scrollIntoView()
+				return true
 			}
-			resolve(false)
-		})
+		}
+		return false
 	}
 	
 	//polling is untested
@@ -316,7 +311,7 @@ export default class Otty {
 			url: href,
 			method: "GET",
 			responseType: "text",											//<- dont try to json parse results
-			xhrChangeF: (xhr) => {xhr.setRequestHeader('Ottynav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
+			xhrChangeF: (xhr) => {xhr.setRequestHeader('Otty-Nav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
 		})
 
 		//get and replace page
@@ -401,10 +396,21 @@ export default class Otty {
 			scrolled = await this.scrollToLocationHashElement(url)
 		}
 		if(!scrolled){
+			if(scroll != 0){await this.waitForImages()}
 			window.scroll(0, scroll)
 		}
 
 		return {doc: storeDoc, befY, replaceSelector} // return the old element replaced
+	}
+	async waitForImages(){
+		let arr = Array.from(document.body.querySelectorAll('img')).map((im)=>{
+			new Promise((resolve) => {
+				im.addEventListener('load', resolve)
+				if(im.complete){resolve()}
+			})
+		})
+		for(let a of arr){await a}
+		return true
 	}
 	_pageState(scroll, doc, url, replaceSelector, match){
 		this.historyReferences[this.historyReferenceLocation] = {
@@ -452,7 +458,7 @@ export default class Otty {
 				this.historyReferenceLocation =  e.state.historyReferenceLocation
 				let hr = this.historyReferences[this.historyReferenceLocation]
 				if(hr && hr.match == e.state.match){
-					let replacedInfo  = await this.pageReplace(hr.doc, hr.scroll, hr.url)
+					let replacedInfo  = await this.pageReplace(hr.doc, hr.scroll, hr.url) 
 					lastInf.scroll = lastScroll
 					lastInf.doc = replacedInfo.doc
 					lastInf.replaceSelector = replacedInfo.replaceSelector

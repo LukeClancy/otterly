@@ -34,7 +34,7 @@ export default class UnitHandler {
 			}
 		})
 		HTMLElement.prototype.qs = function(str){ return this.querySelector(str) }
-		HTMLElement.prototype.qa = function(str){ return this.querySelectorAll(str) }		
+		HTMLElement.prototype.qsa = function(str){ return this.querySelectorAll(str) }		
 	}
 	addUnit(ob, nms) {
 		if(nms == undefined) {
@@ -166,7 +166,7 @@ export default class UnitHandler {
 		return all
 	}
 	handleFirstUnits(){
-		let node, x, x_node, trig, f, unit, deets
+		let node, x, unit
 		x = {}
 		for(let u of this.units) {
 			x[u.unitName] = u
@@ -184,10 +184,9 @@ export default class UnitHandler {
 		for(node of load_xs) {
 			let evs = this.parseEventString(node.dataset.on)
 			for(let ev of evs){
-				deets = this.getEventDetails(ev, node)
-				if(deets == null){continue}
-				[unit, x_node, trig, f] = deets
-				unit.addUnitEvent(x_node, trig, f, JSON.stringify(ev))
+				unit = this.getEventUnit(ev, node)
+				if(!unit){continue}
+				unit.addUnitEvent(ev, node)
 			}
 		}
 
@@ -201,18 +200,7 @@ export default class UnitHandler {
 		if(n.matches(pat)){units.push(n)}
 		return units
 	}
-	getEventDetails(x, xNode, brokenParent){
-		//click->LikeArea#like				will find the closest LikeArea dataunit and hit like
-		//click->like						will just hit the like function of the closest data unit
-		//option 1: click->like(e, post: true)	will find the closest data unit and run unit.like(e, post: true)
-		//option 2: click->like({})			< the {} gets parsed as javascript and is added to the function call. Issue, only one parameter at a time
-		//option 3: click->like([])			< then we use the ... syntax to expand it and throw in the e as first param. I like this because
-		//										it allows multiple deep parameters in a non shitty way (unlike stimulusjs), while also stopping people from
-		//										habitually inlining js which could become an issue in option 1. Also would prevent having to run JSON.parse on everything.
-		//
-		// I did not like option 1 since it encourages javascript in the html which is kinda messy. Ended up doing
-		// something like this click->like[...]; which works well i think. OFC we made writing out the unit optional
-
+	getEventUnit(x, xNode, brokenParent){
 		let getUnit = (from, x) => {
 			if(x.unit) {
 				return from.closest(`[data-unit~=\'${x.unit}\']`)
@@ -225,22 +213,15 @@ export default class UnitHandler {
 		//which can make things weird, hence brokenParent.
 		if(brokenParent && !unit){ unit = getUnit(brokenParent, x) }
 
-		if((!unit) || (! (unit = unit._unit)) || (!unit[x.f_name])){
-			if(otty.isDev){
-				if(!unit){
-					console.warn(`data-on error, unable to find unit requested for '${x.f_name}'`,  xNode)	
-				}else{
-					console.warn(`data-on error, '${x.f_name}' not defined on unit`, xNode)
-				}
-			}
+		if(!unit || !(unit._unit)){
+			if(otty.isDev){console.log("unit not found for following node:", xNode, "event parse data: ", x)}
 			return null
 		}
-		let func = unit[x.f_name].bind(unit, ...x.input)
 	
-		return [unit, xNode, x.action, func]
+		return unit._unit
 	}
 	changeEvents(node, new_x, old_x, brokenParent){
-		let trig, f, unit, xNode, x, deets, nx, ox
+		let unit, x, nx, ox
 
 		new_x = this.parseEventString(new_x)
 		old_x = this.parseEventString(old_x)
@@ -248,16 +229,14 @@ export default class UnitHandler {
 		nx = new_x.filter(x => !old_x.includes(x))
 		ox = old_x.filter(x => !new_x.includes(x))
 		for(x of ox){
-			deets = this.getEventDetails(x, node, brokenParent)
-			if(deets == null){ continue }
-			[unit, xNode, trig, f] = deets
-			unit.removeUnitEvent(xNode, trig, undefined, JSON.stringify(x))
+			unit = this.getEventUnit(x, node, brokenParent)
+			if(!unit){ continue }
+			unit.removeUnitEvent(x, node)
 		}
 		for(x of nx){
-			deets = this.getEventDetails(x, node)
-			if(deets == null){ continue }
-			[unit, xNode, trig, f] = deets
-			unit.addUnitEvent(xNode, trig, f, JSON.stringify(x))
+			unit = this.getEventUnit(x, node, brokenParent)
+			if(!unit){continue}
+			unit.addUnitEvent(x, node)
 		}
 	}
 	createObserver(){

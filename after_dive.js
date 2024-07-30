@@ -1,19 +1,32 @@
 import morphdom from 'morphdom'
-export default class AfterDive {
-	constructor(baseElement, submitter, resolve, reject, development){
+xport default class AfterDive {
+	constructor(baseElement, submitter, resolve, reject, isDev){
 		this.baseElement = baseElement
 		this.submitter = submitter
 		this.resolve = resolve
 		this.reject = reject
-		this.development = development
+		this.isDev = isDev
 	}
-	getSelector(str) {
+	getThing(obj, optional = false, doc = document){
+		let el
+		if(obj.id){
+			el = doc.getElementById(obj.id)
+			if(!el && !optional && this.isDev){console.log('could not find object with id: ', obj.id)}
+		} else if(obj.selector){
+			el = this.getSelector(obj.selector, doc)
+			if(!el && !optional && this.isDev){console.log('could not find object with selector: ', obj.selector)}
+		} else if(!optional && this.isDev) {
+			console.log('expected a node identifier (either a "selector" field or an "id" field)')
+		}
+		return el
+	}
+	getSelector(str, doc = document) {
 		if(str == "submitter") {
 			return this.submitter
 		} else if (str == "baseElement") {
 			return this.baseElement
 		} else {
-			return this.querySelector(str)
+			return doc.querySelector(str)
 		}
 	}
 	log(obj){
@@ -28,10 +41,8 @@ export default class AfterDive {
 		otty.goto(obj)
 	}
 	insert(obj){
-		let sel = this.getSelector(obj['selector'])
-		if(sel == null && this.development) {
-			console.log('missing selector ', obj['selector'])
-		}
+		let sel = this.getThing(obj)
+		if(!sel) { return }
 		let pos = obj['position']
 		let html = obj['html']
 		sel.insertAdjacentHTML(pos, html)
@@ -79,15 +90,13 @@ export default class AfterDive {
 				return true
 			}
 		}
-		let s = this.getSelector(x['selector'])
-		if(s ==null && this.development) {
-			console.log('missing selector ', x['selector'])
-			return
-		}
+		let s = this.getThing(x)
+		if(!s) { return }
 		morphdom(s, x['html'], opts)
 	}
 	remove(obj) {
-		let s = this.getSelector(obj['selector'])
+		let s = this.getThing(obj)
+		if(!s) { return }
 		s.parentNode.removeChild(s)
 	}
 	replace(obj){
@@ -98,14 +107,11 @@ export default class AfterDive {
 
 		parser = new DOMParser();
 		tempdoc = parser.parseFromString(obj['html'],  "text/html")
-		orienter = tempdoc.querySelector(obj['selector'])
+		orienter = this.getThing(obj, false, tempdoc)
+		if(!orienter){return}
 		childrenOnly = obj['childrenOnly']
-		sel = this.querySelector(obj['selector'])
-		if(sel == null && this.development) {
-			console.log('missing selector ', obj['selector'])
-			return
-		}
-
+		sel = this.getThing(obj)
+		if(!sel){return}
 		if(orienter == null) {
 			if(childrenOnly) {
 				sel.innerHTML = obj['html']
@@ -122,19 +128,16 @@ export default class AfterDive {
 		}
 	}
 	innerHtml(obj) {
-		let s = this.getSelector(obj['selector'])
-		if(s == null && this.development) {
-			console.log('missing selector ', obj['selector'])
-			return
-		}
+		let s = this.getThing(obj)
+		if(!s){return}
 		s.innerHTML = obj['html']
 	}
-	eval2(data) {								//anything weird? Just use this. You have access to anything in the hash.
-												//selector input is special and will automatically be set to the variable referenced.
-		let selector							//note it doesn't actually use eval for performance related reasons. Something about effects on minimization i believe.
-		if(data['selector']){					//is this a security risk? We check we are connecting with ourselves above. So should be fine
-			selector = this.getSelector(data['selector'])
-		}
+	eval2(data) {								
+		//anything weird? Just use this. You have access to anything in the hash.
+		//selector input is special and will automatically be set to the variable referenced.
+		//note it doesn't actually use eval for performance related reasons. Something about effects on minimization i believe.
+		//is this a security risk? We check we are connecting with ourselves above. So should be fine
+		let selector = getThing(data, true)
 		//continue being insane lol
 		let x = Function("data", "selector", 'baseElement', 'submitter', `"use strict"; ${data['code']};`)(data, selector, this.baseElement, this.submitter)
 		if(x == "break") {						//lil bit of extra awesome
