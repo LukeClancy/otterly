@@ -114,7 +114,7 @@ let generic =  {
 	diveRepeatDefaultStopF(h){
 		//due to spa this pageChanged thing can be a bother.
 		let pageChanged = window.location.href != h.originalPageLocation
-		let askedToStop = h.lastResult == "STOP"
+		let askedToStop = ( h.lastResult == "STOP" )
 		return (pageChanged || askedToStop)
 	},
 	

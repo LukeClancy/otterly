@@ -328,15 +328,13 @@ export default class Otty {
 		//replace page , starting at the top of the page. Update page state for where we were before the switch.
 		//Note it is important to store the replacement html after removal to allow for things such as onRemoved
 		// to run before we store.
-		let replacedInfo = await this.pageReplace(page, 0, href)
-		let s = replacedInfo.befY //?
-		console.log({replacedInfo, s})
-		this.replacePageState(loc, replacedInfo.doc, replacedInfo.replaceSelector, s)
-
-		if(!(opts.reload)){
-			//tore the new page information.
-			this.pushPageState(href, undefined, replacedInfo.replaceSelector)
-		}
+		await this.pageReplace(page, 0, href, (BefBodyClone, befY, replaceSelector) => {
+			this.replacePageState(loc, BefBodyClone, replaceSelector, befY)
+			if(!(opts.reload)){
+				//store the new page information.
+				this.pushPageState(href, undefined, replaceSelector)
+			}
+		})
 
 		return href
 	}
@@ -351,7 +349,7 @@ export default class Otty {
 		morphdom(storeDoc.head, head)
 		return storeDoc
 	}
-	async pageReplace(tempdoc, scroll, url){
+	async pageReplace(tempdoc, scroll, url, beforeReplace){
 		let befY = window.scrollY
 		
 		//standardize tempdoc (accept strings)
@@ -381,6 +379,11 @@ export default class Otty {
 		//set stored information for recreating current page
 		let storeDoc =  this.createStorageDoc(orienter, document.head)
 
+		//placement of this is important since we need to change the url and state after killing all the previous units
+		//but before creating all the new units and event handles. For instance, this breaks _parse->dive[{"behavior": "repeat"}] since
+		//the thing quick cancels since it thinks it left the page lol.
+		if(beforeReplace){beforeReplace(storeDoc, befY, replaceSelector)}
+
 		// orienter.replaceChildren(...tmpOrienter.children)
 		orienter.replaceWith(tmpOrienter)
 
@@ -399,8 +402,6 @@ export default class Otty {
 			if(scroll != 0){await this.waitForImages()}
 			window.scroll(0, scroll)
 		}
-
-		return {doc: storeDoc, befY, replaceSelector} // return the old element replaced
 	}
 	async waitForImages(){
 		let arr = Array.from(document.body.querySelectorAll('img')).map((im)=>{
@@ -458,10 +459,11 @@ export default class Otty {
 				this.historyReferenceLocation =  e.state.historyReferenceLocation
 				let hr = this.historyReferences[this.historyReferenceLocation]
 				if(hr && hr.match == e.state.match){
-					let replacedInfo  = await this.pageReplace(hr.doc, hr.scroll, hr.url) 
-					lastInf.scroll = lastScroll
-					lastInf.doc = replacedInfo.doc
-					lastInf.replaceSelector = replacedInfo.replaceSelector
+					await this.pageReplace(hr.doc, hr.scroll, hr.url, (befBodyClone, befY, replaceSelector) => {
+						lastInf.scroll = befY
+						lastInf.doc = befBodyClone
+						lastInf.replaceSelector = replaceSelector
+					})
 				} else {
 					//if they refresh and hit the back button or something it can make things difficult
 					//especially since we still get the state information (thats where the e.state.match comes forward.)
