@@ -49,7 +49,7 @@ let generic =  {
 			e.actionNode.dispatchEvent(new Event(e.action))
 			e.actionNode.removeEventListener(e.action, e.f)
 		} else {
-			e.obj.removeEventListener(e.action, e.f)
+			e.actionNode.removeEventListener(e.action, e.f)
 		}
 		return e
 	},
