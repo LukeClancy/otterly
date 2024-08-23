@@ -196,10 +196,6 @@ export default class Otty {
 	}
 	//this will default to replacing body if this css selector naught found.
 
-	navigationHeadMorph(tempdocHead){
-		morphdom(document.head, tempdocHead)
-	}
-
 	async stopGoto(href){
 		//Check scroll to hash on same page
 		let loc = window.location
@@ -349,6 +345,9 @@ export default class Otty {
 		morphdom(storeDoc.head, head)
 		return storeDoc
 	}
+	navigationHeadMorph(tempdocHead){
+		morphdom(document.head, tempdocHead)
+	}
 	async pageReplace(tempdoc, scroll, url, beforeReplace){
 		let befY = window.scrollY
 		
@@ -445,8 +444,9 @@ export default class Otty {
 		if(n.matches(pat)){units.push(n)}
 		return units
 	}
-	handleNavigation(){
-		this.navigationReplaces = ['body']
+	handleNavigation(opts = {}){
+		opts = {navigationReplaces: ['body'], ...opts}
+		this.navigationReplaces = opts.navigationReplaces
 		this.historyReferenceLocation = 0
 		this.historyReferences = []
 		history.scrollRestoration = 'manual'

@@ -27,7 +27,6 @@ let generic =  {
 		if(action == "_remove"){
 			this.unitEvents.push({actionNode,  action, f: f3, f_str, f_name})
 		} else if(action == "_parse"){
-			console.log("HERE", action, f3)
 			actionNode.addEventListener(action, f3)
 			actionNode.dispatchEvent(new Event(action))
 			actionNode.removeEventListener(action, f3)
@@ -202,7 +201,6 @@ let generic =  {
 		}
 		if(!(h.opts.method)){ h.opts.method = "POST"}
 
-		console.log(h.opts.formInfo, h.formData)
 		h.opts.formInfo = otty.obj_to_fd(h.opts.formInfo, h.formData)
 
 		return h.opts

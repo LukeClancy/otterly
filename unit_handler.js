@@ -33,8 +33,10 @@ export default class UnitHandler {
 				set: function(v) {return (this.dataset = v)}
 			}
 		})
-		HTMLElement.prototype.qs = function(str){ return this.querySelector(str) }
-		HTMLElement.prototype.qsa = function(str){ return this.querySelectorAll(str) }		
+		HTMLElement.prototype.qs = HTMLElement.prototype.querySelector
+		HTMLElement.prototype.qsa = HTMLElement.prototype.querySelectorAll
+		document.qs = document.querySelector
+		document.qsa = document.querySelectorAll
 	}
 	addUnit(ob, nms) {
 		if(nms == undefined) {
