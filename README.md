@@ -8,4 +8,4 @@ Made to be highly configurable.
 
 The framework with the most otter references in it.
 
-[Docs](https://github.com/LukeClancy/otterly/tree/main/docs)
+[Docs Website](https://otterlyjs.org)
