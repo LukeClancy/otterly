@@ -1,12 +1,8 @@
 import morphdom from 'morphdom'
-export default class AfterDive {
-	constructor(baseElement, submitter, resolve, reject, isDev){
-		this.baseElement = baseElement
-		this.submitter = submitter
-		this.resolve = resolve
-		this.reject = reject
-		this.isDev = isDev
-	}
+export default {
+	init(baseElement, submitter, resolve, reject, isDev){
+		return {baseElement, submitter, resolve, reject, isDev, ...this}
+	},
 	getThing(obj, optional = false, doc = document){
 		let el
 		if(obj.id){
@@ -19,7 +15,7 @@ export default class AfterDive {
 			console.log('expected a node identifier (either a "selector" field or an "id" field)')
 		}
 		return el
-	}
+	},
 	getSelector(str, doc = document) {
 		if(str == "submitter") {
 			return this.submitter
@@ -28,25 +24,25 @@ export default class AfterDive {
 		} else {
 			return doc.querySelector(str)
 		}
-	}
+	},
 	log(obj){
 		console.log(obj)
-	}
+	},
 	reload(){
 		Turbo.cache.clear()
 		otty.goto(window.location.href, {reload: true})
 		// window.Turbo.visit(window.location.href, {action: 'replace'})
-	}
+	},
 	redirect(obj){
 		otty.goto(obj)
-	}
+	},
 	insert(obj){
 		let sel = this.getThing(obj)
 		if(!sel) { return }
 		let pos = obj['position']
 		let html = obj['html']
 		sel.insertAdjacentHTML(pos, html)
-	}
+	},
 	morph(x) {
 		let opts = x //this includes options that go directly to the morphdom function
 		let perm = x['permanent']
@@ -93,12 +89,12 @@ export default class AfterDive {
 		let s = this.getThing(x)
 		if(!s) { return }
 		morphdom(s, x['html'], opts)
-	}
+	},
 	remove(obj) {
 		let s = this.getThing(obj)
 		if(!s) { return }
 		s.parentNode.removeChild(s)
-	}
+	},
 	replace(obj){
 		//this method needs more scrutiny
 
@@ -126,12 +122,12 @@ export default class AfterDive {
 				sel.replaceWith(orienter)
 			}
 		}
-	}
+	},
 	innerHtml(obj) {
 		let s = this.getThing(obj)
 		if(!s){return}
 		s.innerHTML = obj['html']
-	}
+	},
 	eval2(data) {								
 		//anything weird? Just use this. You have access to anything in the hash.
 		//selector input is special and will automatically be set to the variable referenced.
@@ -144,7 +140,7 @@ export default class AfterDive {
 			resolve(returning)
 			return "break"
 		}
-	}
+	},
 	setData(data){
 		let keys, x, key, obj, attrs, attr_keys, y, attr_key
 		keys = Object.keys(data)

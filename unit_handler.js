@@ -9,18 +9,14 @@
 //	3. Initial load those units and event handlers
 //	4. Create observers for those attributes and keep it updated.
 
-export default class UnitHandler {
-	constructor(generic, unit_list){
-		this.generic = generic
-		this.units = unit_list
-
-		this.shortcuts()
-		this.handleFirstUnits()
-		
-		this.createObserver() //mutation that keeps track of all this stuff
-
-		return this
-	}
+export default {
+	init(generic, unit_list){
+		let x = {generic, units: unit_list, ...this}
+		x.shortcuts()
+		x.handleFirstUnits()
+		x.createObserver() //mutation that keeps track of all this stuff
+		return x
+	},
 	shortcuts(){
 		Object.defineProperties(Event.prototype, {
 			ct: {
@@ -33,11 +29,14 @@ export default class UnitHandler {
 				set: function(v) {return (this.dataset = v)}
 			}
 		})
+		
+		HTMLElement.prototype.setA = HTMLElement.prototype.setAttribute
+		HTMLElement.prototype.getA = HTMLElement.prototype.getAttribute
 		HTMLElement.prototype.qs = HTMLElement.prototype.querySelector
 		HTMLElement.prototype.qsa = HTMLElement.prototype.querySelectorAll
 		document.qs = document.querySelector
 		document.qsa = document.querySelectorAll
-	}
+	},
 	addUnit(ob, nms) {
 		if(nms == undefined) {
 			nms = ob.dataset.unit.split(' ') 
@@ -95,7 +94,7 @@ export default class UnitHandler {
 			}).bind(u, onRemoved, u.unitRemoved)
 		}
 		return ob
-	}
+	},
 
 	parseEventString(x){
 		if(!(x) || x.length == 0){ return [] }
@@ -166,7 +165,7 @@ export default class UnitHandler {
 			return JSON.stringify(current)
 		})
 		return all
-	}
+	},
 	handleFirstUnits(){
 		let node, x, unit
 		x = {}
@@ -196,12 +195,12 @@ export default class UnitHandler {
 		for(node of load_units){
 			node._unit.unitConnected()
 		}
-	}
+	},
 	qsInclusive(n, pat){
 		let units = Array.from(n.querySelectorAll(pat))
 		if(n.matches(pat)){units.push(n)}
 		return units
-	}
+	},
 	getEventUnit(x, xNode, brokenParent){
 		let getUnit = (from, x) => {
 			if(x.unit) {
@@ -221,7 +220,7 @@ export default class UnitHandler {
 		}
 	
 		return unit._unit
-	}
+	},
 	changeEvents(node, new_x, old_x, brokenParent){
 		let unit, x, nx, ox
 
@@ -240,7 +239,7 @@ export default class UnitHandler {
 			if(!unit){continue}
 			unit.addUnitEvent(x, node)
 		}
-	}
+	},
 	createObserver(){
 		this.observer = new MutationObserver((ma) => {
 			let n, ns, chls, mut, attrs

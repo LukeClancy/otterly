@@ -1,16 +1,10 @@
 import morphdom from 'morphdom'
 
-export default class Otty {
-	constructor(isDev, afterDive, csrfSelector, csrfHeader) {
-		this.isDev = isDev
-		this.previousDives = []
-		this.ActivePollId = null
-		this.afterDive = afterDive
-		this.poll_path = '/api/poll'
-		this.csrfSelector = csrfSelector
-		this.csrfHeader = csrfHeader
-	}
-	obj_to_fd = function(formInfo, formData) {
+export default {
+	init(isDev, afterDive, csrfSelector, csrfHeader){
+		return {isDev, afterDive, csrfSelector, csrfHeader, ...this}
+	},
+	obj_to_fd(formInfo, formData) {
 		if(formInfo instanceof FormData) {
 			return formInfo
 		} else {
@@ -42,7 +36,7 @@ export default class Otty {
 			}
 			return formData
 		}
-	}
+	},
 	_sendsXHROnLoad(resolve, reject, xhr, responseType){
 		if(xhr.status >= 200 && xhr.status <= 302 && xhr.status != 300) {
 			let rsp = xhr.response
@@ -54,13 +48,13 @@ export default class Otty {
 		} else {
 			reject({status: xhr.status, statusText: xhr.statusText});
 		}
-	}
+	},
 	_sendsXHROnError(resolve, reject, xhr){
 		reject({
 			status: xhr.status,
 			statusText: xhr.statusText
 		});		
-	}
+	},
 	sendsXHR({url, formInfo, method = "POST", xhrChangeF,
 		csrfContent, csrfHeader = this.csrfHeader,
 		csrfSelector = this.csrfSelector,
@@ -107,9 +101,8 @@ export default class Otty {
 				xhr.send(form_data)
 			}
 		}.bind(this))
-	}
-
-	isLocalUrl(url, subdomainAccuracy = -2) {
+	},
+	isLocalUrl(url, subdomainAccuracy = -2){
 		//local includes subdomains. So if we are on x.com, x.com will work and y.x.com will work, but y.com wont.
 		//change the -2 to -3, -4 etc to modify. Times where this may be an issue:
 		//	- if you share domains with untrusted partys.
@@ -120,10 +113,10 @@ export default class Otty {
 			return true
 		}
 		return false
-	}
+	},
 	xss_pass(url){
 		return this.isLocalUrl(url, -2)
-	}
+	},
 	dive(opts = {}){
 		//divewire can be a security risk as its so dynamic, so make sure we are only connecting with ourselves...
 		let url = opts.url
@@ -150,7 +143,7 @@ export default class Otty {
 			}
 
 			y = 0
-			ottys_capabilities = new this.afterDive(baseElement, submitter, resolve, reject, this.isDev)
+			ottys_capabilities = this.afterDive.init(baseElement, submitter, resolve, reject, this.isDev)
 
 			for(action of actions) {
 				if(!action){continue}
@@ -193,7 +186,7 @@ export default class Otty {
 				reject(e)
 			})
 		}.bind(this))
-	}
+	},
 	//this will default to replacing body if this css selector naught found.
 
 	async stopGoto(href){
@@ -210,7 +203,7 @@ export default class Otty {
 			return true
 		}
 		return false
-	}
+	},
 
 	async linkClickedF(e) {
 		let href = e.target.closest('[href]')
@@ -226,7 +219,7 @@ export default class Otty {
 
 		await this.goto(href)
 		return
-	}
+	},
 
 	async scrollToLocationHashElement(loc){
 		if(loc.hash){
@@ -238,62 +231,7 @@ export default class Otty {
 			}
 		}
 		return false
-	}
-	
-	//polling is untested
-	poll = (dat) => {
-		if(this.ActivePollId != dat.id) { return } //check if we should stop
-
-		let maybe_resub = ((x)=>{
-			if(x == 'should_resub') {
-				this.subscribeToPoll(dat.queues, dat.poll_info, dat.wait_time)
-			} else if(!(x == "no_updates")) {
-				dat.store = x
-			}
-		}).bind(this)
-
-		let continue_polling = (()=>{
-			let poll = (()=>{ this.poll(dat) }).bind(this)
-			setTimeout(poll, dat.wait_time)
-		}).bind(this)
-
-		this.dives(this.poll_path, {
-			formInfo: {
-				'otty-store': dat.store
-				//add the encrypted data we need with the queue strings
-			}
-		}).then(maybe_resub).finally(continue_polling)
-	}
-
-	subscribeToPoll = (queues, poll_info, wait_time) => {
-		let id = Math.random()
-		this.ActivePollId = id
-		let dat = {
-			queues: queues,
-			poll_info: poll_info,
-			wait_time: wait_time,
-			id: id
-		}
-		let poll = ((out) => {
-			if(out == 'no_queues') {
-				if(this.isDev){console.log('no_queues', out)}
-			} else {
-				dat.store = out
-				this.poll(dat)
-			}
-		}).bind(this)
-
-		let err_log = ((x)=>{
-			if(this.isDev){console.error('sub fail', x)}
-		}).bind(this)
-
-		this.dives('/api/pollsub', {
-				formInfo: {
-					queues: dat.queues,
-					...dat.poll_info
-				}
-			}).then(poll, err_log)
-	}
+	},
 
 	async goto(href, opts = {}){
 		if(await this.stopGoto(href)){ return -1 }
@@ -333,7 +271,7 @@ export default class Otty {
 		})
 
 		return href
-	}
+	},
 	createStorageDoc(orienter, head){
 		orienter = orienter.cloneNode(true)
 		let storeDoc = (new DOMParser()).parseFromString('<!DOCTYPE HTML> <html></html>', 'text/html')
@@ -344,13 +282,12 @@ export default class Otty {
 		}
 		morphdom(storeDoc.head, head)
 		return storeDoc
-	}
+	},
 	navigationHeadMorph(tempdocHead){
 		morphdom(document.head, tempdocHead)
-	}
+	},
 	async pageReplace(tempdoc, scroll, url, beforeReplace){
-		let befY = window.scrollY
-		
+		let befY = window.scrollY	
 		//standardize tempdoc (accept strings)
 		if(typeof tempdoc == "string") {
 			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
@@ -401,7 +338,7 @@ export default class Otty {
 			if(scroll != 0){await this.waitForImages()}
 			window.scroll(0, scroll)
 		}
-	}
+	},
 	async waitForImages(){
 		let arr = Array.from(document.body.querySelectorAll('img')).map((im)=>{
 			new Promise((resolve) => {
@@ -411,7 +348,7 @@ export default class Otty {
 		})
 		for(let a of arr){await a}
 		return true
-	}
+	},
 	_pageState(scroll, doc, url, replaceSelector, match){
 		this.historyReferences[this.historyReferenceLocation] = {
 			replaceSelector: replaceSelector,
@@ -420,7 +357,7 @@ export default class Otty {
 			url: url,
 			match: match
 		}
-	}
+	},
 	replacePageState(url,  doc, replaceSelector, scroll){
 		let matcher = Math.random()
 		window.history.replaceState({
@@ -428,7 +365,7 @@ export default class Otty {
 			match: matcher
 		}, "", url);
 		this._pageState(scroll, doc, url, replaceSelector, matcher)
-	}
+	},
 	pushPageState(url, doc, replaceSelector){
 		let matcher = Math.random()
 		this.historyReferenceLocation += 1
@@ -438,12 +375,12 @@ export default class Otty {
 			match: matcher
 		}, "", url)
 		this._pageState(0, doc, url, replaceSelector, matcher)
-	}
+	},
 	qsInclusive(n, pat){
 		let units = Array.from(n.querySelectorAll(pat))
 		if(n.matches(pat)){units.push(n)}
 		return units
-	}
+	},
 	handleNavigation(opts = {}){
 		opts = {navigationReplaces: ['body'], ...opts}
 		this.navigationReplaces = opts.navigationReplaces
@@ -473,7 +410,6 @@ export default class Otty {
 				}
 			}
 		}).bind(this))
-
 		//do not rely on eachother
 		// this.updatePageState(window.location, {push: false})
 		this.scrollToLocationHashElement(window.location)
