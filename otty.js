@@ -53,7 +53,7 @@ export default {
 		reject({
 			status: xhr.status,
 			statusText: xhr.statusText
-		});		
+		});
 	},
 	sendsXHR({url, formInfo, method = "POST", xhrChangeF,
 		csrfContent, csrfHeader = this.csrfHeader,
