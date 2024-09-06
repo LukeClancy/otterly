@@ -414,4 +414,60 @@ export default {
 		// this.updatePageState(window.location, {push: false})
 		this.scrollToLocationHashElement(window.location)
 	}
+	previousDives: [],
+	poll(dat){
+		if(this.ActivePollId != dat.id) { return } //check if we should stop
+
+		let maybeResub = ((x)=>{
+			if(x == 'should_resub') {
+				this.subscribeToPoll(dat.queues, dat.pollInfo, dat.waitTime, this.pollPath)
+			} else if(!(x == "no_updates")) {
+				dat.store = x
+			}
+		}).bind(this)
+
+		let continuePolling = (()=>{
+			let poll = (()=>{ this.poll(dat) }).bind(this)
+			setTimeout(poll, dat.waitTime)
+		}).bind(this)
+
+		this.dive({
+			url: this.pollPath,
+			formInfo: {
+				'otty-store': dat.store
+				//add the encrypted data we need with the queue strings
+			}
+		}).then(maybeResub).finally(continuePolling)
+	},
+	subscribeToPoll(queues, pollInfo, waitTime, pollPath){
+		this.pollPath = pollPath
+		let id = Math.random()
+		this.ActivePollId = id
+		let dat = {
+			queues: queues,
+			pollInfo: pollInfo,
+			waitTime: waitTime,
+			id: id
+		}
+		let poll = ((out) => {
+			if(out == 'no_queues') {
+				if(this.isDev){console.log('no_queues', out)}
+			} else {
+				dat.store = out
+				this.poll(dat)
+			}
+		}).bind(this)
+
+		let err_log = ((x)=>{
+			if(this.isDev){console.error('sub fail', x)}
+		}).bind(this)
+
+		this.dive({
+				url: '/api/pollsub',
+				formInfo: {
+					queues: dat.queues,
+					...dat.pollInfo
+				}
+			}).then(poll, err_log)
+	}
 }
