@@ -413,7 +413,7 @@ export default {
 		//do not rely on eachother
 		// this.updatePageState(window.location, {push: false})
 		this.scrollToLocationHashElement(window.location)
-	}
+	},
 	previousDives: [],
 	poll(dat){
 		if(this.ActivePollId != dat.id) { return } //check if we should stop
