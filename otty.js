@@ -431,12 +431,12 @@ export default {
 			setTimeout(poll, dat.waitTime)
 		}).bind(this)
 
+		let fi = {}
+		if(dat.store){fi = {'otty-store': dat.store}}
+
 		this.dive({
 			url: this.pollPath,
-			formInfo: {
-				'otty-store': dat.store
-				//add the encrypted data we need with the queue strings
-			}
+			formInfo: fi
 		}).then(maybeResub).finally(continuePolling)
 	},
 	subscribeToPoll(queues, pollInfo, waitTime, pollPath){
