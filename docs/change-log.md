@@ -2,10 +2,10 @@
 
 
 ### 0.2.0 and 0.1.5
-- MAJOR BREAKING CHANGE where I removed all classes in midflip, instead replacing them with regular objects. This is as I was having issues with the 'extend' keyword in gnome web and apple devices. Due to the extend keyword basically being the only reason anyone would want classes in the first place, and the fact you can *~extend~* an object by just going {...object1, ...yourobject2}, which actually gives more control, I went ahead and removed classes. This should help avoid various niche error cases. In practical senses, instead of going new AClass(...) You now do AClass.init(...) in your index.js file.
-- Tested the polling.
-- Almost forgot, I added shortcuts setA and getA for setAttribute and getAttribute respectively.
-- Need to add docs on all this still.
+- MAJOR BREAKING CHANGE where I removed all classes in midflip, instead replacing them with regular objects. This is as I was having issues with the 'extend' keyword in gnome web and apple devices. It might of been a SWC thing? Due to the extend keyword basically being the only reason anyone would want classes in the first place, and the fact you can *~extend~* an object by just going {...object1, ...yourobject2}, which actually gives more control, I went ahead and removed classes. This should help avoid various niche error cases. In practical senses, instead of going new AClass(...) You now do AClass.init(...) in your index.js file. Objects are simpler and easier to work with anyway, and this is meant to be an easily configurable library. Plus all our units are objects, not classes. Just makes sense to me.
+- Tested the polling. Added polling Docs. Polling is based off queues, and perhaps a little complex. But it covers various use cases,
+	and is setup to be upgradable to websockets in the future if we decide to add websocket compatibility.
+- I added shortcuts setA and getA for setAttribute and getAttribute respectively.
 
 ### 0.1.3
 - Seems fairly stable. May need tuning in some areas but overall works great.
