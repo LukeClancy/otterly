@@ -392,7 +392,6 @@ export default {
 		window.addEventListener('popstate', (async function (e){
 			if(e.state && ( e.state.historyReferenceLocation != undefined)){
 				let lastInf = this.historyReferences[this.historyReferenceLocation]
-				let lastScroll = window.scrollY
 				this.historyReferenceLocation =  e.state.historyReferenceLocation
 				let hr = this.historyReferences[this.historyReferenceLocation]
 				if(hr && hr.match == e.state.match){
@@ -416,12 +415,12 @@ export default {
 	},
 	previousDives: [],
 	poll(dat){
-		if(this.ActivePollId != dat.id) { return } //check if we should stop
+		if(this.ActivePollId != dat.id) { return }
 
 		let maybeResub = ((x)=>{
 			if(x == 'should_resub') {
-				this.subscribeToPoll(dat.queues, dat.pollInfo, dat.waitTime, this.pollPath)
-			} else if(!(x == "no_updates")) {
+				this.subscribeToPoll(dat.queues, dat.pollInfo, dat.waitTime, dat.pollPath, dat.subPath)
+			} else if(x != "no_updates") {
 				dat.store = x
 			}
 		}).bind(this)
@@ -435,20 +434,15 @@ export default {
 		if(dat.store){fi = {'otty-store': dat.store}}
 
 		this.dive({
-			url: this.pollPath,
+			url: dat.pollPath,
 			formInfo: fi
 		}).then(maybeResub).finally(continuePolling)
 	},
-	subscribeToPoll(queues, pollInfo, waitTime, pollPath){
+	subscribeToPoll(queues, pollInfo, waitTime, pollPath, subPath){
 		this.pollPath = pollPath
 		let id = Math.random()
 		this.ActivePollId = id
-		let dat = {
-			queues: queues,
-			pollInfo: pollInfo,
-			waitTime: waitTime,
-			id: id
-		}
+		let dat = { queues, pollInfo, waitTime, id, pollPath, subPath }
 		let poll = ((out) => {
 			if(out == 'no_queues') {
 				if(this.isDev){console.log('no_queues', out)}
@@ -463,7 +457,7 @@ export default {
 		}).bind(this)
 
 		this.dive({
-				url: '/api/pollsub',
+				url: subPath,
 				formInfo: {
 					queues: dat.queues,
 					...dat.pollInfo
