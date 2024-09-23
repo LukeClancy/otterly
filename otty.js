@@ -208,6 +208,7 @@ export default {
 	async linkClickedF(e) {
 		let href = e.target.closest('[href]')
 		if(!href){ return }
+		if(href.dataset.nativeHref != undefined){return}
 		href = href.getAttribute('href')
 		if(!this.isLocalUrl(href, -99)){
 			return
@@ -262,23 +263,25 @@ export default {
 		//replace page , starting at the top of the page. Update page state for where we were before the switch.
 		//Note it is important to store the replacement html after removal to allow for things such as onRemoved
 		// to run before we store.
-		await this.pageReplace(page, 0, href, (BefBodyClone, befY, replaceSelector) => {
-			this.replacePageState(loc, BefBodyClone, replaceSelector, befY)
+		await this.pageReplace(page, 0, href, (BefBodyClone, befY) => {
+			this.replacePageState(loc, BefBodyClone, befY)
 			if(!(opts.reload)){
 				//store the new page information.
-				this.pushPageState(href, undefined, replaceSelector)
+				this.pushPageState(href, undefined)
 			}
-		})
+		}, loc)
 
 		return href
 	},
 	createStorageDoc(orienter, head){
-		orienter = orienter.cloneNode(true)
+		if(!Array.isArray(orienter)){ orienter = [orienter]}
+		orienter = orienter.map( (x) => x.cloneNode(true) )
 		let storeDoc = (new DOMParser()).parseFromString('<!DOCTYPE HTML> <html></html>', 'text/html')
-		if(orienter.nodeName == 'BODY'){
+
+		if(orienter.length == 1 && orienter[0].nodeName == "BODY"){
 			storeDoc.body = orienter
 		} else {
-			storeDoc.body.appendChild(orienter)
+			for(let o of orienter){storeDoc.body.appendChild(o)}
 		}
 		morphdom(storeDoc.head, head)
 		return storeDoc
@@ -286,42 +289,63 @@ export default {
 	navigationHeadMorph(tempdocHead){
 		morphdom(document.head, tempdocHead)
 	},
-	async pageReplace(tempdoc, scroll, url, beforeReplace){
+	navigationBodyChange(orienter, tmpOrienter) {
+		let x = 0
+		while(x < orienter.length){
+			orienter[x].replaceWith(tmpOrienter[x])
+			x += 1
+		}
+	},
+	getOrienters(tempdoc, url, lastUrl, ){
+		//this method may be overrode for more functionality.
+		//Orienters can be an array, and they will still store properly.
+		//This can allow you to fine tune page updates. For example, changing the notifications
+		//and a post's contents without changing the layout. Or switching in an email without changing the rest of the page.
+		//This also necessitates changing navigationBodyChange to deal with it.
+
+		let newOrienters, orienters,  replaceSelector, fail, a, b
+		for(replaceSelector of this.navigationReplaces){
+			if(!Array.isArray(replaceSelector)){ replaceSelector = [replaceSelector]}
+			fail = false; orienters = []; newOrienters = []
+			for(let s of replaceSelector){
+				a = document.querySelector(s)
+				if(!a){fail = true; break}
+				b = tempdoc.querySelector(s)
+				if(!b){fail=true; break}
+
+				orienters.push(a); newOrienters.push(b)
+			}
+			if(!fail){
+				return [orienters, newOrienters]
+			}
+		}
+	},
+	async pageReplace(tempdoc, scroll, url, beforeReplace, lastUrl){
 		let befY = window.scrollY	
 		//standardize tempdoc (accept strings)
 		if(typeof tempdoc == "string") {
 			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
 		}
 
-		//switch the document's this.navigationReplace's css selector elements. if either not found,
-		//default to switching bodies entirely
-		let tmpOrienter, orienter,  replaceSelector
-		for(replaceSelector of this.navigationReplaces){
-			// console.log(tempdoc, replaceSelector)
-			tmpOrienter = tempdoc.querySelector(replaceSelector)	
-			orienter = document.querySelector(replaceSelector)
-			if(tmpOrienter && orienter) {
-				break
+		[orienters, newOrienters] = this.getOrienters(tempdoc, url, lastUrl)
+
+		//been having issues with the removed thing triggering as the observer is on the body which we are removing.
+		if(orienters[0].nodeName == "BODY"){
+			for(let unitEl of this.qsInclusive(orienters[0], '[data-unit]')){
+				this.stopError( () => unitEl._unit?.unitRemoved() )
 			}
 		}
 
-		//been having issues with the removed thing triggering.
-		//this will do it manually, and then remove the el._unit so
-		//it wont trigger again
-		for(let unitEl of this.qsInclusive(orienter, '[data-unit]')){
-			unitEl._unit?.unitRemoved()
-		}
-	
 		//set stored information for recreating current page
-		let storeDoc =  this.createStorageDoc(orienter, document.head)
+		let storeDoc =  this.createStorageDoc(orienters, document.head)
 
 		//placement of this is important since we need to change the url and state after killing all the previous units
 		//but before creating all the new units and event handles. For instance, this breaks _parse->dive[{"behavior": "repeat"}] since
 		//the thing quick cancels since it thinks it left the page lol.
-		if(beforeReplace){beforeReplace(storeDoc, befY, replaceSelector)}
+		if(beforeReplace){beforeReplace(storeDoc, befY)}
 
-		// orienter.replaceChildren(...tmpOrienter.children)
-		orienter.replaceWith(tmpOrienter)
+		// orienter.replaceChildren(...tmpOrienter.children)		
+		this.navigationBodyChange(orienters, newOrienters)
 
 		//morph the head to the new head. Throw into a different function for
 		//any strangeness that one may encounter and 
@@ -349,32 +373,32 @@ export default {
 		for(let a of arr){await a}
 		return true
 	},
-	_pageState(scroll, doc, url, replaceSelector, match){
-		this.historyReferences[this.historyReferenceLocation] = {
-			replaceSelector: replaceSelector,
+	stopError(f){
+		try{
+			f()
+		} catch(e) {
+			console.error(e)
+		}
+	},
+	_pageState(scroll, doc, url){
+		this.historyReferences[this.historyReferenceId] = {
 			doc:  doc,
 			scroll: scroll,
 			url: url,
-			match: match
+			tn: (new Date()).getTime()
 		}
 	},
-	replacePageState(url,  doc, replaceSelector, scroll){
-		let matcher = Math.random()
+	replacePageState(url,  doc, scroll){
 		window.history.replaceState({
-			historyReferenceLocation: this.historyReferenceLocation,
-			match: matcher
+			historyReferenceId: (this.historyReferenceId),
 		}, "", url);
-		this._pageState(scroll, doc, url, replaceSelector, matcher)
+		this._pageState(scroll, doc, url)
 	},
-	pushPageState(url, doc, replaceSelector){
-		let matcher = Math.random()
-		this.historyReferenceLocation += 1
-		this.historyReferences = this.historyReferences.slice(0, this.historyReferenceLocation + 1)
+	pushPageState(url, doc){
 		window.history.pushState({
-			historyReferenceLocation: this.historyReferenceLocation,
-			match: matcher
+			historyReferenceId: (this.historyReferenceId = Math.random()),
 		}, "", url)
-		this._pageState(0, doc, url, replaceSelector, matcher)
+		this._pageState(0, doc, url)
 	},
 	qsInclusive(n, pat){
 		let units = Array.from(n.querySelectorAll(pat))
@@ -384,27 +408,24 @@ export default {
 	handleNavigation(opts = {}){
 		opts = {navigationReplaces: ['body'], ...opts}
 		this.navigationReplaces = opts.navigationReplaces
-		this.historyReferenceLocation = 0
-		this.historyReferences = []
+		this.historyReferenceId = Math.random()
+		this.historyReferences = {}
 		history.scrollRestoration = 'manual'
 		document.addEventListener('click', this.linkClickedF.bind(this))
 
 		window.addEventListener('popstate', (async function (e){
-			if(e.state && ( e.state.historyReferenceLocation != undefined)){
-				let lastInf = this.historyReferences[this.historyReferenceLocation]
-				this.historyReferenceLocation =  e.state.historyReferenceLocation
-				let hr = this.historyReferences[this.historyReferenceLocation]
-				if(hr && hr.match == e.state.match){
-					await this.pageReplace(hr.doc, hr.scroll, hr.url, (befBodyClone, befY, replaceSelector) => {
+			if(e.state && ( e.state.historyReferenceId != undefined)){
+				let lastInf = this.historyReferences[this.historyReferenceId]
+				let hr = this.historyReferences[( this.historyReferenceId =  e.state.historyReferenceId )]
+				if(hr){
+					await this.pageReplace(hr.doc, hr.scroll, hr.url, (strDoc, befY) => {
 						lastInf.scroll = befY
-						lastInf.doc = befBodyClone
-						lastInf.replaceSelector = replaceSelector
-					})
+						lastInf.doc = strDoc
+					}, lastInf.url)
 				} else {
 					//if they refresh and hit the back button or something it can make things difficult
 					//especially since we still get the state information (thats where the e.state.match comes forward.)
-					this.historyReferenceLocation = 0
-					this.historyReferences = []
+					this.historyReferenceId = Math.random()
 					this.goto(window.location, {reload: true})
 				}
 			}

@@ -1,5 +1,9 @@
 # changelog
 
+### 0.2.2
+- Added a stopError function in otty.js. This function is called when there is an error in unit activities, like a click or when connected/removed. The purpose of this is to stop errors in unit 1 from propogating up and canceling actions in unit 2. You may want to override this method to support whatever error logging code/service you use.
+- changed how SPAs work in a couple of ways for reliablity and sanity. Additionally, custom SPA functionality is now easily attainable. Simply use the handleNavigation({replaceSelector}) option. For instance, providing[ [".contentArea", ".notificationArea], "body"] will replace contentArea and notificationArea if they are both available in the current document and the new document. Otherwise it will fall back to the body. Very powerfull. No need to override anything. This functionality needs further testing.
+- thinking about making a YT video.
 
 ### 0.2.0 and 0.1.5
 - MAJOR BREAKING CHANGE where I removed all classes in midflip, instead replacing them with regular objects. This is as I was having issues with the 'extend' keyword in gnome web and apple devices. It might of been a SWC thing? Due to the extend keyword basically being the only reason anyone would want classes in the first place, and the fact you can *~extend~* an object by just going {...object1, ...yourobject2}, which actually gives more control, I went ahead and removed classes. This should help avoid various niche error cases. In practical senses, instead of going new AClass(...) You now do AClass.init(...) in your index.js file. Objects are simpler and easier to work with anyway, and this is meant to be an easily configurable library. Plus all our units are objects, not classes. Just makes sense to me.

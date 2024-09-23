@@ -14,13 +14,13 @@ let generic =  {
 		if(!f){console.error(`Could not find function ${f} on unit: `, this, "data-on defined on: ", actionNode); return}
 
 		let f3
+		let dis = this
 		if(input.length > 0){
 			//we want the function to look like this x(event, input1, input2, ...)
 			//but by binding before the event listener  it ends up looking like (input 1, ..., event)
-			let f2 = (input, event) => f.bind(this)(event, ...input)
-			f3 = f2.bind(this, input)
+			f3 = (event) => f.bind(dis)(event, ...input)
 		} else {
-			f3 = f.bind(this)
+			f3 = (event) => f.bind(dis)(event)
 		}
 
 		let f_str =  JSON.stringify(evInfo)

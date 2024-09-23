@@ -193,7 +193,7 @@ export default {
 
 		//call load units connect events
 		for(node of load_units){
-			node._unit.unitConnected()
+			otty.stopError( () => node._unit.unitConnected())
 		}
 	},
 	qsInclusive(n, pat){
@@ -326,7 +326,7 @@ export default {
 				this.changeEvents(target, target.dataset.on, oldValue)
 			}
 			//call unit connected
-			for(n of ns) { n._unit.unitConnected() }
+			for(n of ns) { otty.stopError(() => n._unit.unitConnected())}
 		})
 
 		//actual observation
