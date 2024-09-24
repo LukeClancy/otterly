@@ -292,7 +292,11 @@ export default {
 	navigationBodyChange(orienter, tmpOrienter) {
 		let x = 0
 		while(x < orienter.length){
-			orienter[x].replaceWith(tmpOrienter[x])
+			if(orienter[x].nodeName == "BODY"){
+				orienter[x].innerHTML = tmpOrienter[x].innerHTML
+			} else {
+				orienter[x].replaceWith(tmpOrienter[x])
+			}
 			x += 1
 		}
 	},
@@ -330,11 +334,11 @@ export default {
 		[orienters, newOrienters] = this.getOrienters(tempdoc, url, lastUrl)
 
 		//been having issues with the removed thing triggering as the observer is on the body which we are removing.
-		if(orienters[0].nodeName == "BODY"){
-			for(let unitEl of this.qsInclusive(orienters[0], '[data-unit]')){
-				this.stopError( () => unitEl._unit?.unitRemoved() )
-			}
-		}
+		// if(orienters[0].nodeName == "BODY"){
+		// 	for(let unitEl of this.qsInclusive(orienters[0], '[data-unit]')){
+		// 		this.stopError( () => unitEl._unit?.unitRemoved() )
+		// 	}
+		// }
 
 		//set stored information for recreating current page
 		let storeDoc =  this.createStorageDoc(orienters, document.head)
