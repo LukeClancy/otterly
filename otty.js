@@ -336,6 +336,7 @@ export default {
 			tempdoc = (new DOMParser()).parseFromString(tempdoc,  "text/html")
 		}
 
+		let orienters, newOrienters
 		[orienters, newOrienters] = this.getOrienters(tempdoc, url, lastUrl)
 
 		//been having issues with the removed thing triggering as the observer is on the body which we are removing.
