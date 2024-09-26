@@ -43,27 +43,25 @@ export default {
 		let html = obj['html']
 		sel.insertAdjacentHTML(pos, html)
 	},
-	morph(x) {
+	_morphOpts(opts) { //this is used externally
 		let opts = x //this includes options that go directly to the morphdom function
 		let perm = x['permanent']
 		let ign = x['ignore']
 		if(opts == null) {
-			opts = {}
+			return {}
 		}
 		if(ign != null || perm != null) {
 			let m_parse_p = (selector, from, to) => {
 				if(from.matches(selector) && to.matches(selector)) {
 					return false
-				} else {
-					return true
 				}
+				return true
 			}
 			let m_parse_i = (selector, from, to) => {
 				if(from.matches(selector) || to.matches(selector)) {
 					return false
-				} else {
-					return true
 				}
+				return true
 			}
 			let m_parse = (selectors, inner_parse, from, to) => {
 				if(!(Array.isArray(selectors))) {
@@ -86,9 +84,11 @@ export default {
 				return true
 			}
 		}
+	},
+	morph(x) {
 		let s = this.getThing(x)
 		if(!s) { return }
-		morphdom(s, x['html'], opts)
+		morphdom(s, x['html'], this._morphOpts(opts))
 	},
 	remove(obj) {
 		let s = this.getThing(obj)

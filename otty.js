@@ -283,10 +283,15 @@ export default {
 		} else {
 			for(let o of orienter){storeDoc.body.appendChild(o)}
 		}
-		morphdom(storeDoc.head, head)
+		morphdom(storeDoc.head, head.cloneNode(true))
 		return storeDoc
 	},
 	navigationHeadMorph(tempdocHead){
+		// this is what my custom otty looks like after I hit an edge case where an external
+		//library was adding to my head but then it would get reset on nav:
+		//
+		//		morphdom(document.head, tempdocHead, this.afterDive._morphOpts({permanent: '[href*="google"], [src*="google"], [id*="google"]'}))
+
 		morphdom(document.head, tempdocHead)
 	},
 	navigationBodyChange(orienter, tmpOrienter) {
