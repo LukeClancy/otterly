@@ -1,4 +1,9 @@
 # changelog
+### 0.2.3
+- Bug fixes
+- Made omitting changes to the head easer, to deal with javascript libraries that change head elements. For instance the google button makes style changes, but then you would go to a new page, which removes those elements, as they aren't in the head element of the new page. Anyway, you can do that by overriding navigationHeadMorph, and looking at the comment in that function.
+- Having unreplicatable issues with google button, am considering error reporting system to go along with the stopError function. For instance, an otty.log function and a reportError function. The reportError function would be fault tolerant and not rely on bundling or the rest of otty. Would have to copy-paste into script tag.
+
 
 ### 0.2.2
 - Added a stopError function in otty.js. This function is called when there is an error in unit activities, like a click or when connected/removed. The purpose of this is to stop errors in unit 1 from propogating up and canceling actions in unit 2. You may want to override this method to support whatever error logging code/service you use.
@@ -7,8 +12,7 @@
 
 ### 0.2.0 and 0.1.5
 - MAJOR BREAKING CHANGE where I removed all classes in midflip, instead replacing them with regular objects. This is as I was having issues with the 'extend' keyword in gnome web and apple devices. It might of been a SWC thing? Due to the extend keyword basically being the only reason anyone would want classes in the first place, and the fact you can *~extend~* an object by just going {...object1, ...yourobject2}, which actually gives more control, I went ahead and removed classes. This should help avoid various niche error cases. In practical senses, instead of going new AClass(...) You now do AClass.init(...) in your index.js file. Objects are simpler and easier to work with anyway, and this is meant to be an easily configurable library. Plus all our units are objects, not classes. Just makes sense to me.
-- Tested the polling. Added polling Docs. Polling is based off queues, and perhaps a little complex. But it covers various use cases,
-	and is setup to be upgradable to websockets in the future if we decide to add websocket compatibility.
+- Tested the polling. Added polling Docs. Polling is based off queues, and perhaps a little complex. But it covers various use cases, and is setup to be upgradable to websockets in the future if we decide to add websocket compatibility.
 - I added shortcuts setA and getA for setAttribute and getAttribute respectively.
 
 ### 0.1.3
