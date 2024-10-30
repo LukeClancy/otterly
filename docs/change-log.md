@@ -6,10 +6,12 @@
 - I added the "delay" dive behavior. Similar to stagger, except instead of just rejecting the dive, it sets a timeout to run it. Good for search bars.
 - use case: keyup searches that refresh an area while you search.
 
+for example: <input data-on='keydown->dive[{"behavior": "delay", "stagger": 300, allowDefault: true,  withform: true}]'>
+
 I noticed recently that "GET" methods when it comes to forms sometimes navigate to the page that is requested. Considering adding this as an option in otterly. Thinking about it, it might of made some of my previous code neater in my MidFlip project (especially the many-choice menu). Certainly better than manipulating
 complex hrefs in some cases. *shouldn't* be a hard thing to work in.
 
-for example: <input data-on='keydown->dive[{"behavior": "delay", "stagger": 300, allowDefault: true,  withform: true}]'>
+A potential weakness with my dive behaviors is they are only really expected to be one use case per unit. Might not work so well else-wise. Perhaps I should note that. Perhaps I should key them to the currentTarget? But the current target could have multiple events keyed to it. IDK. Feels like one of those "I could make this way more complex and blow up the package size so as to fix a niche issue that nearly no one will hit and would be fairly easy to solve the one time you do hit it" type of things. I think we will deal.
 
 ### 0.2.3
 - Bug fixes
