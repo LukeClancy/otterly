@@ -102,18 +102,6 @@ export default {
 			}
 		}.bind(this))
 	},
-	isLocalUrl(url, subdomainAccuracy = -2){
-		//local includes subdomains. So if we are on x.com, x.com will work and y.x.com will work, but y.com wont.
-		//change the -2 to -3, -4 etc to modify. Times where this may be an issue:
-		//	- if you share domains with untrusted partys.
-		let d = window.location.hostname
-		let urld = (new URL(url, window.location)).hostname //url_with_default_host
-
-		if( d.split('.').slice(subdomainAccuracy).join('.') == urld.split('.').slice(subdomainAccuracy).join('.')) {
-			return true
-		}
-		return false
-	},
 	xss_pass(url){
 		return this.isLocalUrl(url, -2)
 	},
@@ -210,6 +198,7 @@ export default {
 		if(!href){ return }
 		if(href.dataset.nativeHref != undefined){return}
 		href = href.getAttribute('href')
+
 		if(!this.isLocalUrl(href, -99)){
 			return
 		}
@@ -494,5 +483,21 @@ export default {
 					...dat.pollInfo
 				}
 			}).then(poll, err_log)
+	},
+	logData:  [],
+	log: (data) => {
+		let t = 'noTrace'
+		try {
+			t = new Error().stack
+		} catch{ }
+
+		console.log(data)
+
+		otty.logData.push(JSON.stringify({
+			time: (new Date).getTime(),
+			loc: window.location.href,
+			stack: t,
+			data: data,
+		}))
 	}
 }

@@ -1,6 +1,6 @@
 {
   "name": "@luketclancy/otterly",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "A javascript front end framework, Inspired by stimulus js. Like an otter its small, fast and versatile. Based around logical units attached to html nodes. Great for a backend-first approach to website creation.",
   "main": "index.js",
   "scripts": {

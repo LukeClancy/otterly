@@ -139,6 +139,43 @@ let generic =  {
 				await new Promise(justWait, justWait)
 			}
 		},
+		delay: async function(e, h){
+			this.delayInfo = this.diveInfo(e, h)
+			console.log(1, this.delayInfo, this.timeoutWait)
+			if(this.timeoutWait){return}
+
+			let doit = (() => {
+				console.log('dit')
+				this.lastStagger =(new Date().getTime())
+				this.timeoutWait = undefined
+				return otty.dive(this.delayInfo)
+			}).bind(this)
+
+			if(!this.lastStagger){this.lastStagger = 0}
+			let waitedFor = (new Date().getTime()) - this.lastStagger
+			let stag = h.stagger || 500
+
+			console.log(waitedFor, stag)
+
+			if(waitedFor < stag){
+				console.log('timmy')
+				this.timeoutWait = setTimeout((() => {
+					doit()
+				}).bind(this), stag - waitedFor)
+			} else {
+				console.log('ok')
+				doit()
+			}
+		},
+		staggered: async function(e, h){
+			let tn = new Date().getTime()
+			let stag = h.stagger || 500
+			if ( this.lastStagger && (tn - this.lastStagger) < stag){
+				return
+			}
+			this.lastStagger = tn
+			return this.diveBehaviors.default.bind(this)(e, h)
+		},
 		default: function(e, h){
 			return otty.dive(this.diveInfo(e, h))
 		}
@@ -206,7 +243,7 @@ let generic =  {
 		return h.opts
 	},
 	dive(e, h){
-		e.preventDefault()
+		if(!h['allowDefault']){e.preventDefault()}
 		let act
 		if(h.behavior == undefined){h.behavior = 'default'}
 		if(act = this.diveBehaviors[h.behavior]){

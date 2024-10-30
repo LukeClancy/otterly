@@ -1,4 +1,16 @@
 # changelog
+### 0.2.4
+- I added 'allowDefault'  to the generic unit's dive options. This allows the event to propogate instead of the default circumstance where it prevents event propogration.
+- I added the stagger customization attribute which comes into play in customizing times for the below "staggered" and "delay" dive behaviors
+- I added 'staggered' to the available dive behaviors. Staggered does not run a dive if a dive was run recently. This time is customizable by the stagger attribute.
+- I added the "delay" dive behavior. Similar to stagger, except instead of just rejecting the dive, it sets a timeout to run it. Good for search bars.
+- use case: keyup searches that refresh an area while you search.
+
+I noticed recently that "GET" methods when it comes to forms sometimes navigate to the page that is requested. Considering adding this as an option in otterly. Thinking about it, it might of made some of my previous code neater in my MidFlip project (especially the many-choice menu). Certainly better than manipulating
+complex hrefs in some cases. *shouldn't* be a hard thing to work in.
+
+for example: <input data-on='keydown->dive[{"behavior": "delay", "stagger": 300, allowDefault: true,  withform: true}]'>
+
 ### 0.2.3
 - Bug fixes
 - Made omitting changes to the head easer, to deal with javascript libraries that change head elements. For instance the google button makes style changes, but then you would go to a new page, which removes those elements, as they aren't in the head element of the new page. Anyway, you can do that by overriding navigationHeadMorph, and looking at the comment in that function.
