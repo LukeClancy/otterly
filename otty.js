@@ -376,7 +376,7 @@ export default {
 		try{
 			f()
 		} catch(e) {
-			console.error(e)
+			otty.log(e)
 		}
 	},
 	_pageState(scroll, doc, url){
@@ -491,7 +491,7 @@ export default {
 			t = new Error().stack
 		} catch{ }
 
-		console.log(data)
+		console.error(data)
 
 		otty.logData.push(JSON.stringify({
 			time: (new Date).getTime(),

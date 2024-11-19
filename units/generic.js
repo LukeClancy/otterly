@@ -96,7 +96,8 @@ let generic =  {
 	},
 	diveOptParams: ['url', 'method', 'csrfContent',
 		'csrfHeader', 'csrfSelector', 'confirm',
-		'withCredentials', 'e', 'submitter'],
+		'withCredentials', 'e', 'submitter'
+	],
 	diveErrParams: ['formInfo', 'xhrChangeF', 'baseElement'],
 	relevantData(e){
 		if(e){
@@ -141,11 +142,9 @@ let generic =  {
 		},
 		delay: async function(e, h){
 			this.delayInfo = this.diveInfo(e, h)
-			console.log(1, this.delayInfo, this.timeoutWait)
 			if(this.timeoutWait){return}
 
 			let doit = (() => {
-				console.log('dit')
 				this.lastStagger =(new Date().getTime())
 				this.timeoutWait = undefined
 				return otty.dive(this.delayInfo)
@@ -154,16 +153,11 @@ let generic =  {
 			if(!this.lastStagger){this.lastStagger = 0}
 			let waitedFor = (new Date().getTime()) - this.lastStagger
 			let stag = h.stagger || 500
-
-			console.log(waitedFor, stag)
-
 			if(waitedFor < stag){
-				console.log('timmy')
 				this.timeoutWait = setTimeout((() => {
 					doit()
 				}).bind(this), stag - waitedFor)
 			} else {
-				console.log('ok')
 				doit()
 			}
 		},
@@ -181,7 +175,7 @@ let generic =  {
 		}
 	},
 	diveInfo(e, h = {}){
-	//this function is for formatting html data into a format for an otty dive. Behaviours:
+		//this function is for formatting html data into a format for an otty dive. Behaviours:
 		//	1. returns an object with the dive options, includexing the formInfo option (which has the information sent to the server)
 		//		- if a dataset key is included in diveOptParams, it will be added to the options.
 		//		- if a dataset key is included in diveErrParams, you will get a warning.
@@ -197,27 +191,38 @@ let generic =  {
 		//              - if the data-path / data-method is not included, falls back to closest form's action/formaction/method/formethod html attitrubes
 		//				- you can think of this boolean as saying "play nice with the html"
 		//
-		//	note that if there are any formData keys (through formData or inputs options) then function will return a FormData object.
+		//	note that if the unit is on a form, it will automatically activate withForm and use that forms
+		//		formdata
+		
 		let defaults = {
 			opts: {e: e, formInfo: {}},
-			data: { ...this.relevantData(e) },  
-			formData: new FormData(),
 			withform: false
 		}
+
+		//get the input data elements
+		let data = this.relevantData(e)
+
+		//parse the settings into appropriate locations
 		h = { ...defaults, ...h	}
 		h.opts = {...defaults.opts, ...h.opts} //regain e and formInfo
 		let inp, els, k
-		for(k of Object.keys(h.data)){
+		for(k of Object.keys(data)){
 			if(this.diveOptParams.includes(k)){
-				h.opts[k] = h.data[k]
+				h.opts[k] = data[k]
 			} else if(this.diveErrParams.includes(k)){
 				console.error('bad key for diveDataset: ' + k)
 			} else {
-				h.opts.formInfo[k] = h.data[k]
+				h.opts.formInfo[k] = data[k]
 			}
 		}
-		if(h.withform){
-			//we use formData so it doesn't freak if theres an image or something.
+		// if its a form treat inputs as natively as possible. Otherwise
+		// if someone wants it to act form-like, then try that. Note
+		// that in this case it doesn't work with everything...
+		// (checkboxes for example). Usually fine though.
+		if(this.element.nodeName == "FORM"){
+			h.withform = true
+			h.formData = new FormData(this.element)
+		} else if(h.withform){
 			els = Array.from(this.el.qsa('input'))
 			if(this.el.nodeName == 'INPUT'){els.push(this.el)}
 			for(inp of els) {
@@ -226,15 +231,18 @@ let generic =  {
 				}
 			}
 		}
-		if(!(h.opts.url)){h.opts.url = h.opts.formInfo.path}
+
+		
+		if(!(h.opts.url)){ h.opts.url = h.opts.formInfo.path }
+		if(!(h.opts.method)){h.opts.method = h.opts.formInfo.method}
 		if(h.withform){
 			if(!( h.opts.url)){ h.opts.url = e.ct.getAttribute("formaction")}
 			if(! (h.opts.url) ){ h.opts.url = e.ct.closest('form')?.getAttribute('action') }
-		}
-		if(!(h.opts.method)){h.opts.method = h.opts.formInfo.method}
-		if(h.withform){
 			if(!(h.opts.method)){ h.opts.method = e.ct.getAttribute("formmethod")}
 			if(!(h.opts.method)){ h.opts.method = e.ct.closest('form')?.getAttribute('method') }
+			if(e.ct.name && e.ct.value){
+				h.formData.append(e.ct.name, e.ct.value)
+			}
 		}
 		if(!(h.opts.method)){ h.opts.method = "POST"}
 

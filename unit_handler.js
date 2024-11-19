@@ -27,6 +27,9 @@ export default {
 			ds: {
 				get: function(){return this.dataset},
 				set: function(v) {return (this.dataset = v)}
+			},
+			cl: {
+				get: function(){return this.classList}
 			}
 		})
 		
@@ -34,6 +37,7 @@ export default {
 		HTMLElement.prototype.getA = HTMLElement.prototype.getAttribute
 		HTMLElement.prototype.qs = HTMLElement.prototype.querySelector
 		HTMLElement.prototype.qsa = HTMLElement.prototype.querySelectorAll
+
 		document.qs = document.querySelector
 		document.qsa = document.querySelectorAll
 	},
