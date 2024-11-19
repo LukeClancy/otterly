@@ -49,7 +49,7 @@ A potential weakness with my dive behaviors is they are only really expected to 
 	- I am thinking about making a hex package for ajax side of otterly. Counter argument is that you would then have to version match (gross) and also the code is pretty simple anyway / may not be needed (after all, its just some json [{morph: {id: x, html: y}}] etc, it doesn't need to be complicated. OFC you might have a custom function for throwing up an alert or something but still.)
 - updated docs
 - Made docs/marketing website based off the markdown: [https://otterlyjs.org](https://otterlyjs.org). (was going to use otterly.js and even got  the domain. Turns out .js domains are unusable. Dont know why they sell them?)
-- Tell me if you have any isssssuessssssss with the github issues button.
+- Tell me if you have any issues with the github issues button.
 
 
 ### 0.0.13
