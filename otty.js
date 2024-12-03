@@ -283,7 +283,7 @@ export default {
 		let storeDoc = (new DOMParser()).parseFromString('<!DOCTYPE HTML> <html></html>', 'text/html')
 
 		if(orienter.length == 1 && orienter[0].nodeName == "BODY"){
-			storeDoc.body = orienter
+			storeDoc.body = orienter[0]
 		} else {
 			for(let o of orienter){storeDoc.body.appendChild(o)}
 		}
