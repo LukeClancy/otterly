@@ -1,5 +1,10 @@
 # changelog
 
+### 3.0.2
+- Fixed a bug in otty.goto for offsite links.
+- Renamed and reworked dive behaviors. delay is now called stagger. stagger is now called limit. Created documentation for them.
+- Need to take a deeper look at logging. Starting to think error reports might be outside scope of the project, but loggings not.
+
 ### 3.0.1
 - if a unit is set on a form, withform will always be true, and it will use that form's formdata. This makes it easier to use native form elements, ex: checkboxes (which have weird html standards)
 - Forgot to mention an otty.log method that is to squash errors in unit A so they don't stop unit B from running. It pushes logging information onto otty.logData, and logs to the console aswell. Should send it in a post request to tracked_errors for error tracking. Will do in future.

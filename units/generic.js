@@ -140,7 +140,7 @@ let generic =  {
 				await new Promise(justWait, justWait)
 			}
 		},
-		delay: async function(e, h){
+		stagger: async function(e, h){
 			this.delayInfo = this.diveInfo(e, h)
 			if(this.timeoutWait){return}
 
@@ -161,9 +161,9 @@ let generic =  {
 				doit()
 			}
 		},
-		staggered: async function(e, h){
+		limit: async function(e, h){
 			let tn = new Date().getTime()
-			let stag = h.stagger || 500
+			let stag = h.waitTime || 500
 			if ( this.lastStagger && (tn - this.lastStagger) < stag){
 				return
 			}
@@ -231,7 +231,7 @@ let generic =  {
 				}
 			}
 		}
-
+		
 		
 		if(!(h.opts.url)){ h.opts.url = h.opts.formInfo.path }
 		if(!(h.opts.method)){h.opts.method = h.opts.formInfo.method}

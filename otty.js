@@ -178,6 +178,13 @@ export default {
 	//this will default to replacing body if this css selector naught found.
 
 	async stopGoto(href){
+		if(!this.handlingNavigation){
+			//handle use case where person does not want spa, which, after headaches, fair enough.
+			//as linkclickedf was never activated, this should only happen through afterDive
+			window.location.href = href
+			return true
+		}
+		
 		//Check scroll to hash on same page
 		let loc = window.location
 		href = new URL(href, loc)
@@ -185,12 +192,23 @@ export default {
 		if(loc.origin == href.origin && href.pathname == loc.pathname){
 			return await this.scrollToLocationHashElement(href)
 		}
-		//I wanted my subdomains to be counted too... apparently not possible...
+		//I wanted my subdomains to be counted too... apparently not possible... 
 		if(loc.origin != href.origin){
-			window.location.href = href.origin
+			window.location.href = href
 			return true
 		}
 		return false
+	},
+	isLocalUrl(url, subdomainAccuracy = -2){
+		//local includes subdomains. So if we are on x.com, x.com will work and y.x.com will work, but y.com wont.
+		//change the -2 to -3, -4 etc to modify. Times where this may be an issue:
+		//	- if you share domains with untrusted partys.
+		let d = window.location.hostname
+		let urld = (new URL(url, window.location)).hostname //url_with_default_host
+		let opt1 = d.split('.').slice(subdomainAccuracy).join('.')
+		let opt2 = urld.split('.').slice(subdomainAccuracy).join('.')
+
+		return (opt1 == opt2)
 	},
 
 	async linkClickedF(e) {
@@ -210,17 +228,14 @@ export default {
 		await this.goto(href)
 		return
 	},
-
 	async scrollToLocationHashElement(loc){
-		if(loc.hash){
-			let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
-			if(e){
-				await this.waitForImages()
-				e.scrollIntoView()
-				return true
-			}
-		}
-		return false
+		if(!loc.hash){ return false }
+		let e = document.getElementById(decodeURIComponent(loc.hash.slice(1)))
+		if(!e){ return false }
+
+		await this.waitForImages()
+		e.scrollIntoView()
+		return true
 	},
 
 	async goto(href, opts = {}){
@@ -409,6 +424,7 @@ export default {
 		this.navigationReplaces = opts.navigationReplaces
 		this.historyReferenceId = Math.random()
 		this.historyReferences = {}
+		this.handlingNavigation = true
 		history.scrollRestoration = 'manual'
 		document.addEventListener('click', this.linkClickedF.bind(this))
 
@@ -485,13 +501,17 @@ export default {
 			}).then(poll, err_log)
 	},
 	logData:  [],
-	log: (data) => {
+	log: (data, isError) => {
 		let t = 'noTrace'
 		try {
 			t = new Error().stack
 		} catch{ }
 
-		console.error(data)
+		if(isError){
+			console.error(data)
+		} else {
+			console.log(data)
+		}
 
 		otty.logData.push(JSON.stringify({
 			time: (new Date).getTime(),
