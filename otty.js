@@ -237,7 +237,6 @@ export default {
 		e.scrollIntoView()
 		return true
 	},
-
 	async goto(href, opts = {}){
 		if(await this.stopGoto(href)){ return -1 }
 
@@ -250,7 +249,7 @@ export default {
 			url: href,
 			method: "GET",
 			responseType: "text",											//<- dont try to json parse results
-			xhrChangeF: (xhr) => {xhr.setRequestHeader('Otty-Nav', 'true'); return xhr} 	//<- header so server knows regular GET vs other otty requests
+			xhrChangeF: (xhr) => { xhr.setRequestHeader('Otty-Nav', 'true'); return xhr } 	//<- header so server knows regular GET vs other otty requests
 		})
 
 		//get and replace page
@@ -303,6 +302,11 @@ export default {
 		while(x < orienter.length){
 			if(orienter[x].nodeName == "BODY"){
 				orienter[x].innerHTML = tmpOrienter[x].innerHTML
+				//javascript wise, its useful for the body's attributes to remain the same.
+				//css wise, its a headache. So pass the class and style, but not the rest.
+				//(element replacement is not an option due to event listeners and such)
+				orienter.setAttribute('class', (tmpOrienter.getAttribute('class') || ''))
+				orienter.setAttribute('style', (tmpOrienter.getAttribute('style') || ''))
 			} else {
 				orienter[x].replaceWith(tmpOrienter[x])
 			}
