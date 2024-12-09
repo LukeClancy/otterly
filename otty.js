@@ -297,16 +297,15 @@ export default {
 
 		morphdom(document.head, tempdocHead)
 	},
-	navigationBodyChange(orienter, tmpOrienter) {
+	navigationBodyChange(orienter, tmpOrienter) { //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< DELETE ME
 		let x = 0
 		while(x < orienter.length){
 			if(orienter[x].nodeName == "BODY"){
 				orienter[x].innerHTML = tmpOrienter[x].innerHTML
 				//javascript wise, its useful for the body's attributes to remain the same.
 				//css wise, its a headache. So pass the class and style, but not the rest.
-				//(element replacement is not an option due to event listeners and such)
-				orienter.setAttribute('class', (tmpOrienter.getAttribute('class') || ''))
-				orienter.setAttribute('style', (tmpOrienter.getAttribute('style') || ''))
+				orienter[x].setAttribute('class', (tmpOrienter[x].getAttribute('class') || ''))
+				orienter[x].setAttribute('style', (tmpOrienter[x].getAttribute('style') || ''))
 			} else {
 				orienter[x].replaceWith(tmpOrienter[x])
 			}
