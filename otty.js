@@ -297,7 +297,7 @@ export default {
 
 		morphdom(document.head, tempdocHead)
 	},
-	navigationBodyChange(orienter, tmpOrienter) { //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< DELETE ME
+	navigationBodyChange(orienter, tmpOrienter) {
 		let x = 0
 		while(x < orienter.length){
 			if(orienter[x].nodeName == "BODY"){
