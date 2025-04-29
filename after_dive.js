@@ -133,7 +133,7 @@ export default {
 		//selector input is special and will automatically be set to the variable referenced.
 		//note it doesn't actually use eval for performance related reasons. Something about effects on minimization i believe.
 		//is this a security risk? We check we are connecting with ourselves above. So should be fine
-		let selector = getThing(data, true)
+		let selector = this.getThing(data, true)
 		//continue being insane lol
 		let x = Function("data", "selector", 'baseElement', 'submitter', `"use strict"; ${data['code']};`)(data, selector, this.baseElement, this.submitter)
 		if(x == "break") {						//lil bit of extra awesome
