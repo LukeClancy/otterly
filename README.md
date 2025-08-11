@@ -9,3 +9,8 @@ Made to be highly configurable.
 The framework with the most otter references in it.
 
 [Docs Website](https://otterlyjs.org)
+
+
+# Versioning
+
+From now on we use Break Versioning as described by [this guy here](https://www.taoensso.com/break-versioning)
