@@ -13,4 +13,4 @@ The framework with the most otter references in it.
 
 # Versioning
 
-From now on we use Break Versioning as described by [this guy here](https://www.taoensso.com/break-versioning)
+From now on we use Break Versioning as described by [taoensso](https://www.taoensso.com/break-versioning)
